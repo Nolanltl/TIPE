@@ -1,0 +1,280 @@
+\documentclass[11pt,a4paper]{article}
+
+% -------------------------------------------------
+% PACKAGES
+% -------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{Problème à deux corps gravitationnel :\\
+résolution analytique de l'orbite circulaire}
+\author{TIPE --- Méthodes d'intégration numérique}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+On considère deux corps de masses non négligeables $m_1$ et $m_2$
+soumis uniquement à leur interaction gravitationnelle newtonienne.
+Le but de cette partie est d'obtenir une \emph{solution analytique}
+du mouvement lorsque l'orbite relative est circulaire.
+Cette solution servira de référence pour évaluer la précision de différentes
+méthodes d'intégration numérique (Euler, Verlet, Runge--Kutta, etc.).
+
+\section{Équations de Newton pour deux corps}
+
+On note $\vec r_1(t)$ et $\vec r_2(t)$ les positions des deux masses
+dans un référentiel galiléen, et
+\[
+\vec r = \vec r_1 - \vec r_2, \qquad r = \|\vec r\|.
+\]
+
+La force gravitationnelle exercée par $2$ sur $1$ est
+\begin{equation}
+\vec F_{1} = G\,\frac{m_1 m_2}{r^3}\,(\vec r_2 - \vec r_1),
+\end{equation}
+et par la troisième loi de Newton,
+\begin{equation}
+\vec F_{2} = -\vec F_{1}.
+\end{equation}
+
+Les équations de Newton s'écrivent alors
+\begin{equation}
+\label{eq:newton1}
+m_1 \ddot{\vec r}_1 = G\,\frac{m_1 m_2}{r^3}(\vec r_2 - \vec r_1),
+\end{equation}
+\begin{equation}
+\label{eq:newton2}
+m_2 \ddot{\vec r}_2 = -G\,\frac{m_1 m_2}{r^3}(\vec r_2 - \vec r_1).
+\end{equation}
+
+Ces équations couplées peuvent être simplifiées grâce à une
+réduction barycentrique.
+
+\section{Réduction barycentrique}
+
+On introduit la position du barycentre
+\begin{equation}
+\vec R = \frac{m_1 \vec r_1 + m_2 \vec r_2}{M},
+\qquad
+M = m_1 + m_2,
+\end{equation}
+et le vecteur position relatif
+\begin{equation}
+\vec r = \vec r_1 - \vec r_2.
+\end{equation}
+
+On peut inverser ces relations pour exprimer les positions individuelles
+en fonction de $\vec R$ et $\vec r$ :
+\begin{equation}
+\label{eq:r1Rr}
+\vec r_1 = \vec R + \frac{m_2}{M}\,\vec r,
+\end{equation}
+\begin{equation}
+\label{eq:r2Rr}
+\vec r_2 = \vec R - \frac{m_1}{M}\,\vec r.
+\end{equation}
+
+\subsection{Mouvement du barycentre}
+
+En additionnant les équations \eqref{eq:newton1} et \eqref{eq:newton2},
+on obtient
+\begin{equation}
+m_1 \ddot{\vec r}_1 + m_2 \ddot{\vec r}_2 = 0.
+\end{equation}
+Or, par définition de $\vec R$,
+\begin{equation}
+M \ddot{\vec R}
+= m_1 \ddot{\vec r}_1 + m_2 \ddot{\vec r}_2,
+\end{equation}
+d'où
+\begin{equation}
+M \ddot{\vec R} = 0
+\quad\Longrightarrow\quad
+\ddot{\vec R} = 0.
+\end{equation}
+
+Le barycentre décrit donc un mouvement rectiligne uniforme :
+\begin{equation}
+\label{eq:R(t)}
+\vec R(t) = \vec R_0 + \vec V_0\,t,
+\end{equation}
+où $\vec R_0$ et $\vec V_0$ sont respectivement la position et la
+vitesse initiales du barycentre.
+
+\subsection{Mouvement relatif}
+
+On considère maintenant le vecteur relatif
+$\vec r = \vec r_1 - \vec r_2$.
+En dérivant deux fois par rapport au temps :
+\begin{equation}
+\ddot{\vec r} = \ddot{\vec r}_1 - \ddot{\vec r}_2.
+\end{equation}
+En utilisant \eqref{eq:newton1} et \eqref{eq:newton2}, on obtient
+\begin{equation}
+\ddot{\vec r}_1
+= G\,\frac{m_2}{r^3}(\vec r_2 - \vec r_1)
+= -G\,\frac{m_2}{r^3}\,\vec r,
+\end{equation}
+\begin{equation}
+\ddot{\vec r}_2
+= -G\,\frac{m_1}{r^3}(\vec r_2 - \vec r_1)
+= G\,\frac{m_1}{r^3}\,\vec r.
+\end{equation}
+D'où
+\begin{equation}
+\ddot{\vec r}
+= -G\,\frac{m_2}{r^3}\,\vec r
+   -G\,\frac{m_1}{r^3}\,\vec r
+= -G\,\frac{(m_1 + m_2)}{r^3}\,\vec r
+= -G\,\frac{M}{r^3}\,\vec r.
+\end{equation}
+
+On obtient ainsi l'équation du mouvement relatif
+\begin{equation}
+\label{eq:relative}
+\boxed{
+\ddot{\vec r} = -G\,\frac{M}{r^3}\,\vec r
+}
+\end{equation}
+qui est l'équation d'une particule soumise à un potentiel central de type képlérien.
+
+\section{Condition d'orbite circulaire}
+
+Nous cherchons des solutions pour lesquelles la distance relative
+est constante :
+\begin{equation}
+r(t) = r_0.
+\end{equation}
+Le vecteur position relatif s'écrit alors
+\begin{equation}
+\vec r(t) = r_0\,\hat u_r(t),
+\end{equation}
+où $\hat u_r(t)$ est un vecteur unitaire décrivant la direction radiale.
+
+Pour un mouvement circulaire uniforme dans un plan, la dérivée seconde
+de la position est une accélération centripète :
+\begin{equation}
+\ddot{\vec r} = -r_0 \omega^2 \hat u_r,
+\end{equation}
+où $\omega$ est la vitesse angulaire (constante).
+
+En identifiant avec l'équation du mouvement relatif \eqref{eq:relative},
+on obtient
+\begin{equation}
+-r_0 \omega^2 \hat u_r
+= -G\,\frac{M}{r_0^2}\,\hat u_r,
+\end{equation}
+d'où
+\begin{equation}
+r_0 \omega^2 = \frac{G M}{r_0^2}
+\quad\Longrightarrow\quad
+\boxed{
+\omega = \sqrt{\frac{G M}{r_0^3}}
+}.
+\end{equation}
+
+\section{Expression explicite de la trajectoire relative}
+
+On introduit dans le plan de l'orbite les vecteurs unitaires
+\begin{equation}
+\hat u_r = \frac{\vec r_0}{r_0},
+\qquad
+\hat u_\theta = (-u_{r,y},\,u_{r,x}),
+\end{equation}
+où $\hat u_\theta$ est obtenu par rotation de $\hat u_r$ d'un angle
+$\pi/2$ dans le sens trigonométrique.
+
+La solution du mouvement relatif s'écrit alors
+\begin{equation}
+\boxed{
+\vec r_{\mathrm{rel}}(t)
+= r_0\Big[
+\cos(\omega t)\,\hat u_r
++ \sin(\omega t)\,\hat u_\theta
+\Big]
+}.
+\end{equation}
+
+Le barycentre suit le mouvement rectiligne uniforme \eqref{eq:R(t)}.
+Les positions des deux corps s'en déduisent à partir de
+\eqref{eq:r1Rr} et \eqref{eq:r2Rr} :
+\begin{equation}
+\boxed{
+\vec r_1(t)
+= \vec R(t) + \frac{m_2}{M}\,\vec r_{\mathrm{rel}}(t)
+}
+\end{equation}
+\begin{equation}
+\boxed{
+\vec r_2(t)
+= \vec R(t) - \frac{m_1}{M}\,\vec r_{\mathrm{rel}}(t)
+}
+\end{equation}
+Ce sont ces expressions qui sont implémentées dans le code numérique
+pour obtenir la \emph{solution analytique de référence}.
+
+\section{Vitesses initiales pour une orbite circulaire}
+
+On dérive la position relative :
+\begin{equation}
+\dot{\vec r}_{\mathrm{rel}}(t)
+= r_0 \omega
+\Big[
+-\sin(\omega t)\,\hat u_r
++ \cos(\omega t)\,\hat u_\theta
+\Big].
+\end{equation}
+En particulier, à l'instant initial $t=0$ :
+\begin{equation}
+\boxed{
+\dot{\vec r}_{\mathrm{rel}}(0)
+= r_0 \omega\,\hat u_\theta
+}
+\end{equation}
+La norme de la vitesse relative est donc
+\begin{equation}
+\boxed{
+v_{\mathrm{rel}}
+= \|\dot{\vec r}_{\mathrm{rel}}(0)\|
+= r_0 \omega
+= \sqrt{\frac{G M}{r_0}}
+}.
+\end{equation}
+
+Les vitesses individuelles se déduisent des relations barycentriques.
+En dérivant \eqref{eq:r1Rr} et \eqref{eq:r2Rr}, on obtient
+\begin{equation}
+\vec v_1 = \dot{\vec R} + \frac{m_2}{M}\dot{\vec r}
+= \vec V_0 + \frac{m_2}{M}\,\vec v_{\mathrm{rel}},
+\end{equation}
+\begin{equation}
+\vec v_2 = \dot{\vec R} - \frac{m_1}{M}\dot{\vec r}
+= \vec V_0 - \frac{m_1}{M}\,\vec v_{\mathrm{rel}},
+\end{equation}
+où $\vec v_{\mathrm{rel}} = \dot{\vec r}_{\mathrm{rel}}(0)$.
+
+Si l'on choisit un barycentre au repos ($\vec V_0 = \vec 0$), ce qui
+est souvent le cas dans la simulation numérique, les vitesses initiales
+des deux corps s'écrivent
+\begin{equation}
+\boxed{
+\vec v_1 = \frac{m_2}{M}\,\vec v_{\mathrm{rel}},
+\qquad
+\vec v_2 = -\frac{m_1}{M}\,\vec v_{\mathrm{rel}}.
+}
+\end{equation}
+
+Ces expressions fournissent les conditions initiales exactes pour une
+orbite circulaire, utilisées dans le programme afin de comparer les
+méthodes d'intégration numérique (Euler, Verlet, RK4) à la solution
+analytique.
+
+\end{document}
