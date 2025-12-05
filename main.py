@@ -1,6 +1,7 @@
 import numpy as np
 import math as mt
 import matplotlib.pyplot as plt
+#test ajout github
 
 # Variables globales
 G = 1.0  # constante gravitationnelle (unités arbitraires)
