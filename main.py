@@ -1,7 +1,12 @@
 import numpy as np
 import math as mt
 import matplotlib.pyplot as plt
-#test ajout github
+import time
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FIG_DIR = os.path.join(BASE_DIR, "figures")
+os.makedirs(FIG_DIR, exist_ok=True)
 
 # Variables globales
 G = 1.0  # constante gravitationnelle (unités arbitraires)
@@ -297,7 +302,8 @@ def affiche_positions(t, r1, r2, label1="Corps 1", label2="Corps 2"):
     plt.grid(True)
     plt.show()
 
-def plot_erreur(t,r_1_ana,r2_ana,r1_num,r2_num,dt,method_name=""):
+
+def plot_erreur(t, r_1_ana, r2_ana, r1_num, r2_num, dt, method_name=""):
     err1 = np.linalg.norm(r1_num - r_1_ana, axis=-1)
     err2 = np.linalg.norm(r2_num - r2_ana, axis=-1)
 
@@ -312,36 +318,68 @@ def plot_erreur(t,r_1_ana,r2_ana,r1_num,r2_num,dt,method_name=""):
     plt.grid(True)
     plt.show()
 
-# def plot_erreur(
-#     t,
-#     r1_eul,
-#     r1_rk4,
-#     r1_verlet,
-#     r1_ana,
-# ):
-
-#     err1_eul = np.linalg.norm(r1_eul - r1_ana, axis=-1)
-#     err1_rk4 = np.linalg.norm(r1_rk4 - r1_ana, axis=-1)
-#     err1_verlet = np.linalg.norm(r1_verlet - r1_ana, axis=-1)
-
-#     plt.figure()
-#     plt.plot(t, err1_eul, label="Erreur Corps 1 (Euler)")
-#     plt.plot(t, err1_rk4, label="Erreur Corps 1 (RK4)")
-#     plt.plot(t, err1_verlet, label="Erreur Corps 1 (Verlet)")
-
-#     plt.xlabel("Temps")
-#     plt.ylabel("Erreur (distance)")
-#     plt.title("Erreur entre solutions numérique et analytique")
-#     plt.legend()
-#     plt.grid(True)
-#     plt.show()
 
 
-def erreur_dt(dt1, dtf):
-    dt = np.linspace(dt1, dtf, num=5)
-    for d in dt:
-        pass
-    pass
+def tracer_erreur_vs_dt(
+    dt_min=1e-4, dt_max=1.0, nb_points=6,
+    T=100.0
+):
+    """
+    Trace l'erreur maximale en fonction du pas de temps dt pour Euler, RK4, Verlet.
+
+    - dt est généré automatiquement entre dt_min et dt_max (échelle log).
+    - La durée physique simulée est FIXE = T (important !)
+    - Suppose que tu as déjà ces fonctions dans ton script :
+        position_analytique(...)
+        euler_explicite(...)
+        rk4_integrate(...)
+        verlet_integrate(...)
+    """
+
+    dt_list = np.logspace(np.log10(dt_min), np.log10(dt_max), nb_points)
+
+    erreur_euler  = []
+    erreur_rk4    = []
+    erreur_verlet = []
+
+    for d in dt_list:
+        t = np.arange(0.0, T, d)
+
+        # Solution analytique aux mêmes instants
+        r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
+
+        # Euler
+        r1_eul, r2_eul, *_ = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, d, G)
+        err_eul = np.max(np.linalg.norm(r1_eul - r1_ana, axis=1))
+        erreur_euler.append(err_eul)
+
+        # RK4
+        r1_rk4, r2_rk4, *_ = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, d, G)
+        err_rk4 = np.max(np.linalg.norm(r1_rk4 - r1_ana, axis=1))
+        erreur_rk4.append(err_rk4)
+
+        # Verlet
+        r1_ver, r2_ver, *_ = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, d, G)
+        err_ver = np.max(np.linalg.norm(r1_ver - r1_ana, axis=1))
+        erreur_verlet.append(err_ver)
+
+    # Tracé
+    plt.figure(figsize=(8, 6))
+    plt.loglog(dt_list, erreur_euler,  marker="o", label="Euler")
+    plt.loglog(dt_list, erreur_rk4,    marker="o", label="RK4")
+    plt.loglog(dt_list, erreur_verlet, marker="o", label="Verlet")
+    plt.xlabel("Pas de temps dt")
+    plt.ylabel("Erreur maximale")
+    plt.title("Erreur maximale en fonction du pas de temps")
+    plt.grid(True, which="both")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(FIG_DIR, "erreur_vs_dt.png"))
+    plt.show()
+
+    # (optionnel) retourner les valeurs si tu veux les réutiliser
+    return dt_list, np.array(erreur_euler), np.array(erreur_rk4), np.array(erreur_verlet)
+
 
 
 # --- Test ---
@@ -354,22 +392,29 @@ r_01 = (1.0, 0.0)
 r_02 = (-1.0, 0.0)
 v_01, v_02 = vitesses_circulaires(r_01, r_02, m1, m2, G, sens=+1)
 
-dt = 0.01
-t = np.arange(0, 100, dt)
+dt = 0.1
+t = np.arange(0, 10000, dt)
 
-r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
+# r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
 # r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+# r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 # r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 
 
 # affiche_positions(t, r1_ana, r2_ana, label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
 # affiche_positions(t, r1_eul, r2_eul,label1=f'Corps 1 (Euler)(m = {m1})',label2=f"Corps 2 (Euler)(m = {m2})")
-# affiche_positions(t, r1_rk4, r2_rk4,label1=f"Corps 1 (RK4)(m = {m1})",label2=f"Corps 2 (RK4)(m = {m2})")
+# affiche_positions(t, r1_rk4, r2_rk4, label1=f"Corps 1 (RK4)(m = {m1})", label2=f"Corps 2 (RK4)(m = {m2})")
 # affiche_positions(t, r1_verlet, r2_verlet,label1="Corps 1 (Verlet)(m = {m1})",label2="Corps 2 (Verlet)(m = {m2})")
 
 
-
 # plot_erreur(t, r1_ana, r2_ana, r1_eul, r2_eul, dt, method_name="Euler")
-plot_erreur(t, r1_ana, r2_ana, r1_rk4, r2_rk4, dt, method_name="RK4")
+# plot_erreur(t, r1_ana, r2_ana, r1_rk4, r2_rk4, dt, method_name="RK4")
 # plot_erreur(t, r1_ana, r2_ana, r1_verlet, r2_verlet, dt, method_name="Verlet")
+
+
+tracer_erreur_vs_dt(
+    dt_min=1e-4,
+    dt_max=1.0,
+    nb_points=10,
+    T=100.0
+)
