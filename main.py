@@ -377,8 +377,110 @@ def tracer_erreur_vs_dt(
     plt.savefig(os.path.join(FIG_DIR, "erreur_vs_dt.png"))
     plt.show()
 
-    # (optionnel) retourner les valeurs si tu veux les réutiliser
     return dt_list, np.array(erreur_euler), np.array(erreur_rk4), np.array(erreur_verlet)
+
+def energie_mecanique(r1, r2, v1, v2, m1, m2, G=1.0):
+    """
+    Calcule l'énergie mécanique totale du système à deux corps
+    à chaque instant.
+
+    param :
+        r1, r2 : positions des deux corps (Nx2)
+        v1, v2 : vitesses des deux corps (Nx2)
+        m1, m2 : masses
+        G : constante gravitationnelle
+
+    return :
+        E : énergie mécanique totale (array de taille N)
+    """
+    # énergie cinétique
+    Ec1 = 0.5 * m1 * np.sum(v1**2, axis=1)
+    Ec2 = 0.5 * m2 * np.sum(v2**2, axis=1)
+
+    # distance entre les deux corps
+    r12 = np.linalg.norm(r2 - r1, axis=1)
+
+    # énergie potentielle gravitationnelle
+    Ep = - G * m1 * m2 / r12
+
+    # énergie totale
+    E = Ec1 + Ec2 + Ep
+    return E
+
+
+def tracer_energie_double(
+    t,
+    r1_eul, r2_eul, v1_eul, v2_eul,
+    r1_rk4, r2_rk4, v1_rk4, v2_rk4,
+    r1_ver, r2_ver, v1_ver, v2_ver,
+    m1, m2, G=1.0
+):
+    def dE_rel(r1, r2, v1, v2):
+        E = energie_mecanique(r1, r2, v1, v2, m1, m2, G)
+        E0 = E[0]
+        return (E - E0) / abs(E0)
+
+    y_eul = dE_rel(r1_eul, r2_eul, v1_eul, v2_eul)
+    y_rk4 = dE_rel(r1_rk4, r2_rk4, v1_rk4, v2_rk4)
+    y_ver = dE_rel(r1_ver, r2_ver, v1_ver, v2_ver)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    ax1.plot(t, y_eul, label="Euler")
+    ax1.plot(t, y_rk4, label="RK4")
+    ax1.plot(t, y_ver, label="Verlet")
+    ax1.set_title("Dérive de l'énergie (toutes méthodes)")
+    ax1.set_xlabel("Temps")
+    ax1.set_ylabel(r"$(E - E_0)/|E_0|$")
+    ax1.grid(True)
+    ax1.legend()
+
+    ax2.plot(t, y_rk4, label="RK4")
+    ax2.plot(t, y_ver, label="Verlet")
+    ax2.set_title("Zoom : RK4 vs Verlet")
+    ax2.set_xlabel("Temps")
+    ax2.grid(True)
+    ax2.legend()
+
+    for ax in (ax1, ax2):
+        ax.ticklabel_format(style='plain', axis='y', useOffset=False)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(FIG_DIR, "conservation_energie.png"))
+    plt.show()
+
+def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0):
+    drift_rk4 = []
+    drift_ver = []
+
+    for dt in dt_list:
+        t = np.arange(0, T, dt)
+
+
+        r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+        r1_ver, r2_ver, v1_ver, v2_ver = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+
+        E_rk4 = energie_mecanique(r1_rk4, r2_rk4, v1_rk4, v2_rk4, m1, m2, G)
+        E_ver = energie_mecanique(r1_ver, r2_ver, v1_ver, v2_ver, m1, m2, G)
+
+        y_rk4 = (E_rk4 - E_rk4[0]) / abs(E_rk4[0])
+        y_ver = (E_ver - E_ver[0]) / abs(E_ver[0])
+
+        drift_rk4.append(np.max(np.abs(y_rk4)))
+        drift_ver.append(np.max(np.abs(y_ver)))
+
+    plt.figure(figsize=(8,6))
+    plt.loglog(dt_list, drift_rk4, marker="o", label="RK4")
+    plt.loglog(dt_list, drift_ver, marker="o", label="Verlet")
+    plt.xlabel("dt")
+    plt.ylabel(r"max |(E - E0)/|E0||")
+    plt.title("Dérive max d'énergie en fonction de dt")
+    plt.grid(True, which="both")
+    plt.legend()
+    plt.show()
+
+    return np.array(drift_rk4), np.array(drift_ver)
+
 
 
 
@@ -395,10 +497,23 @@ v_01, v_02 = vitesses_circulaires(r_01, r_02, m1, m2, G, sens=+1)
 dt = 0.1
 t = np.arange(0, 10000, dt)
 
-# r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
-# r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-# r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-# r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
+r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+
+# tracer_energie_double(
+#     t,
+#     r1_eul, r2_eul, v1_eul, v2_eul,
+#     r1_rk4, r2_rk4, v1_rk4, v2_rk4,
+#     r1_verlet, r2_verlet, v1_verlet, v2_verlet,
+#     m1, m2, G
+# )
+
+# dt_list = [0.2, 0.1, 0.05, 0.025, 0.0125]
+# drift_energie_vs_dt(dt_list, T=300, r_01=r_01, r_02=r_02, v_01=v_01, v_02=v_02, m1=m1, m2=m2, G=G)
+
+
 
 
 # affiche_positions(t, r1_ana, r2_ana, label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
@@ -413,7 +528,7 @@ t = np.arange(0, 10000, dt)
 
 
 tracer_erreur_vs_dt(
-    dt_min=1e-4,
+    dt_min=1e-5,
     dt_max=1.0,
     nb_points=10,
     T=100.0
