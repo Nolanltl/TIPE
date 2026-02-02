@@ -1,3 +1,4 @@
+
 import numpy as np
 import math as mt
 import matplotlib.pyplot as plt
@@ -291,6 +292,17 @@ def verlet_integrate(r1_0, r2_0, v1_0, v2_0, m1, m2, t, dt, G=1.0):
 
 
 def affiche_positions(t, r1, r2, label1="Corps 1", label2="Corps 2"):
+    """
+    Affiche les trajectoires des deux corps.
+    param :
+        t: temps (array-like)
+        r1: positions du corps 1 (array-like)
+        r2: positions du corps 2 (array-like)
+        label1: label pour le corps 1 (str)
+        label2: label pour le corps 2 (str)
+    return:
+        None
+    """
     plt.figure()
     plt.plot(r1[:, 0], r1[:, 1], label=label1)
     plt.plot(r2[:, 0], r2[:, 1], label=label2)
@@ -304,6 +316,19 @@ def affiche_positions(t, r1, r2, label1="Corps 1", label2="Corps 2"):
 
 
 def plot_erreur(t, r_1_ana, r2_ana, r1_num, r2_num, dt, method_name=""):
+    """
+    Trace l'erreur entre la solution numérique et la solution analytique.
+    param :
+        t: temps (array-like)
+        r_1_ana: positions analytiques du corps 1 (array-like)
+        r2_ana: positions analytiques du corps 2 (array-like)
+        r1_num: positions numériques du corps 1 (array-like)
+        r2_num: positions numériques du corps 2 (array-like)
+        dt: pas de temps utilisé (float)
+        method_name: nom de la méthode numérique utilisée (str)
+    return:
+        None
+    """
     err1 = np.linalg.norm(r1_num - r_1_ana, axis=-1)
     err2 = np.linalg.norm(r2_num - r2_ana, axis=-1)
 
@@ -319,11 +344,7 @@ def plot_erreur(t, r_1_ana, r2_ana, r1_num, r2_num, dt, method_name=""):
     plt.show()
 
 
-
-def tracer_erreur_vs_dt(
-    dt_min=1e-4, dt_max=1.0, nb_points=6,
-    T=100.0
-):
+def tracer_erreur_vs_dt(dt_min=1e-4, dt_max=1.0, nb_points=6, T=100.0):
     """
     Trace l'erreur maximale en fonction du pas de temps dt pour Euler, RK4, Verlet.
 
@@ -338,8 +359,8 @@ def tracer_erreur_vs_dt(
 
     dt_list = np.logspace(np.log10(dt_min), np.log10(dt_max), nb_points)
 
-    erreur_euler  = []
-    erreur_rk4    = []
+    erreur_euler = []
+    erreur_rk4 = []
     erreur_verlet = []
 
     for d in dt_list:
@@ -365,8 +386,8 @@ def tracer_erreur_vs_dt(
 
     # Tracé
     plt.figure(figsize=(8, 6))
-    plt.loglog(dt_list, erreur_euler,  marker="o", label="Euler")
-    plt.loglog(dt_list, erreur_rk4,    marker="o", label="RK4")
+    plt.loglog(dt_list, erreur_euler, marker="o", label="Euler")
+    plt.loglog(dt_list, erreur_rk4, marker="o", label="RK4")
     plt.loglog(dt_list, erreur_verlet, marker="o", label="Verlet")
     plt.xlabel("Pas de temps dt")
     plt.ylabel("Erreur maximale")
@@ -378,6 +399,7 @@ def tracer_erreur_vs_dt(
     plt.show()
 
     return dt_list, np.array(erreur_euler), np.array(erreur_rk4), np.array(erreur_verlet)
+
 
 def energie_mecanique(r1, r2, v1, v2, m1, m2, G=1.0):
     """
@@ -401,20 +423,25 @@ def energie_mecanique(r1, r2, v1, v2, m1, m2, G=1.0):
     r12 = np.linalg.norm(r2 - r1, axis=1)
 
     # énergie potentielle gravitationnelle
-    Ep = - G * m1 * m2 / r12
+    Ep = -G * m1 * m2 / r12
 
     # énergie totale
     E = Ec1 + Ec2 + Ep
     return E
 
 
-def tracer_energie_double(
-    t,
-    r1_eul, r2_eul, v1_eul, v2_eul,
-    r1_rk4, r2_rk4, v1_rk4, v2_rk4,
-    r1_ver, r2_ver, v1_ver, v2_ver,
-    m1, m2, G=1.0
-):
+def tracer_energie_double(t, r1_eul, r2_eul, v1_eul, v2_eul, r1_rk4, r2_rk4, v1_rk4, v2_rk4, r1_ver, r2_ver, v1_ver, v2_ver, m1, m2, G=1.0):
+    """
+    Trace la dérive de l'énergie mécanique pour les trois méthodes d'intégration.
+    param :
+        t: temps (array-like)
+        r1_eul, r2_eul, v1_eul, v2_eul: positions et vitesses pour Euler (arrays numpy)
+        r1_rk4, r2_rk4, v1_rk4, v2_rk4: positions et vitesses pour RK4 (arrays numpy)
+        r1_ver, r2_ver, v1_ver, v2_ver: positions et vitesses pour Verlet (arrays numpy)
+        m1: masse du corps 1 (float)
+        m2: masse du corps 2 (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+    """
     def dE_rel(r1, r2, v1, v2):
         E = energie_mecanique(r1, r2, v1, v2, m1, m2, G)
         E0 = E[0]
@@ -443,19 +470,34 @@ def tracer_energie_double(
     ax2.legend()
 
     for ax in (ax1, ax2):
-        ax.ticklabel_format(style='plain', axis='y', useOffset=False)
+        ax.ticklabel_format(style="plain", axis="y", useOffset=False)
 
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, "conservation_energie.png"))
     plt.show()
 
+
 def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0):
+    """
+    Trace la dérive de l'énergie mécanique en fonction du pas de temps dt.
+    param :
+        dt_list: liste des pas de temps à tester (array-like)
+        T: durée totale de la simulation (float)
+        r_01: position initiale du corps 1 (array-like)
+        r_02: position initiale du corps 2 (array-like)
+        v_01: vitesse initiale du corps 1 (array-like) 
+        v_02: vitesse initiale du corps 2 (array-like)
+        m1: masse du corps 1 (float)
+        m2: masse du corps 2 (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+    return:
+        drift_rk4, drift_ver: dérives maximales de l'énergie pour RK4 et Verlet (arrays numpy)  
+    """ 
     drift_rk4 = []
     drift_ver = []
 
     for dt in dt_list:
         t = np.arange(0, T, dt)
-
 
         r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
         r1_ver, r2_ver, v1_ver, v2_ver = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
@@ -469,7 +511,7 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0):
         drift_rk4.append(np.max(np.abs(y_rk4)))
         drift_ver.append(np.max(np.abs(y_ver)))
 
-    plt.figure(figsize=(8,6))
+    plt.figure(figsize=(8, 6))
     plt.loglog(dt_list, drift_rk4, marker="o", label="RK4")
     plt.loglog(dt_list, drift_ver, marker="o", label="Verlet")
     plt.xlabel("dt")
@@ -480,8 +522,6 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0):
     plt.show()
 
     return np.array(drift_rk4), np.array(drift_ver)
-
-
 
 
 # --- Test ---
@@ -514,8 +554,6 @@ r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, 
 # drift_energie_vs_dt(dt_list, T=300, r_01=r_01, r_02=r_02, v_01=v_01, v_02=v_02, m1=m1, m2=m2, G=G)
 
 
-
-
 # affiche_positions(t, r1_ana, r2_ana, label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
 # affiche_positions(t, r1_eul, r2_eul,label1=f'Corps 1 (Euler)(m = {m1})',label2=f"Corps 2 (Euler)(m = {m2})")
 # affiche_positions(t, r1_rk4, r2_rk4, label1=f"Corps 1 (RK4)(m = {m1})", label2=f"Corps 2 (RK4)(m = {m2})")
@@ -527,9 +565,4 @@ r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, 
 # plot_erreur(t, r1_ana, r2_ana, r1_verlet, r2_verlet, dt, method_name="Verlet")
 
 
-tracer_erreur_vs_dt(
-    dt_min=1e-5,
-    dt_max=1.0,
-    nb_points=10,
-    T=100.0
-)
+tracer_erreur_vs_dt(dt_min=1e-5, dt_max=1.0, nb_points=10, T=100.0)
