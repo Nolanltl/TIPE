@@ -537,22 +537,11 @@ v_01, v_02 = vitesses_circulaires(r_01, r_02, m1, m2, G, sens=+1)
 dt = 0.1
 t = np.arange(0, 10000, dt)
 
-
-# calcule des positions et vitesses avec les différentes méthodes
 r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
 r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 
-#---------------------------------------------------------------------------------
-# affichage des trajectoires
-# affiche_positions(t, r1_ana, r2_ana, label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
-# affiche_positions(t, r1_eul, r2_eul,label1=f'Corps 1 (Euler)(m = {m1})',label2=f"Corps 2 (Euler)(m = {m2})")
-# affiche_positions(t, r1_rk4, r2_rk4, label1=f"Corps 1 (RK4)(m = {m1})", label2=f"Corps 2 (RK4)(m = {m2})")
-# affiche_positions(t, r1_verlet, r2_verlet,label1="Corps 1 (Verlet)(m = {m1})",label2="Corps 2 (Verlet)(m = {m2})")
-
-#---------------------------------------------------------------------------------
-# etude de l'energie mécanique
 # tracer_energie_double(
 #     t,
 #     r1_eul, r2_eul, v1_eul, v2_eul,
@@ -565,12 +554,255 @@ r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, 
 # drift_energie_vs_dt(dt_list, T=300, r_01=r_01, r_02=r_02, v_01=v_01, v_02=v_02, m1=m1, m2=m2, G=G)
 
 
-#---------------------------------------------------------------------------------
-# affichage de l'erreur
+# affiche_positions(t, r1_ana, r2_ana, label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
+# affiche_positions(t, r1_eul, r2_eul,label1=f'Corps 1 (Euler)(m = {m1})',label2=f"Corps 2 (Euler)(m = {m2})")
+# affiche_positions(t, r1_rk4, r2_rk4, label1=f"Corps 1 (RK4)(m = {m1})", label2=f"Corps 2 (RK4)(m = {m2})")
+# affiche_positions(t, r1_verlet, r2_verlet,label1="Corps 1 (Verlet)(m = {m1})",label2="Corps 2 (Verlet)(m = {m2})")
+
 
 # plot_erreur(t, r1_ana, r2_ana, r1_eul, r2_eul, dt, method_name="Euler")
 # plot_erreur(t, r1_ana, r2_ana, r1_rk4, r2_rk4, dt, method_name="RK4")
 # plot_erreur(t, r1_ana, r2_ana, r1_verlet, r2_verlet, dt, method_name="Verlet")
 
 
-tracer_erreur_vs_dt(dt_min=1e-5, dt_max=1.0, nb_points=10, T=100.0)
+# =========================
+# API "propre" + tests TIPE
+# =========================
+
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class TwoBodyProblem:
+    m1: float
+    m2: float
+    G: float = 1.0
+
+@dataclass(frozen=True)
+class InitialState:
+    r1: np.ndarray  # (2,)
+    r2: np.ndarray  # (2,)
+    v1: np.ndarray  # (2,)
+    v2: np.ndarray  # (2,)
+
+@dataclass
+class Trajectory:
+    t: np.ndarray   # (N,)
+    r1: np.ndarray  # (N,2)
+    r2: np.ndarray  # (N,2)
+    v1: np.ndarray  # (N,2)
+    v2: np.ndarray  # (N,2)
+
+def acceleration(r1, r2, m1, m2, G=1.0, eps=0.0):
+    """Accélérations gravitationnelles (option softening eps)."""
+    r = r2 - r1
+    dist2 = float(np.dot(r, r) + eps**2)
+    dist = mt.sqrt(dist2)
+    dist3 = dist2 * dist
+    a1 = G * m2 * r / dist3
+    a2 = -G * m1 * r / dist3
+    return a1, a2
+
+# Registre d'intégrateurs pour une interface commune
+INTEGRATORS = {}
+
+def register_integrator(name):
+    def deco(fn):
+        INTEGRATORS[name] = fn
+        return fn
+    return deco
+
+@register_integrator("euler")
+def integrate_euler(problem: TwoBodyProblem, init: InitialState, t: np.ndarray, eps: float = 0.0) -> Trajectory:
+    dt = float(t[1] - t[0])
+    r1, r2, v1, v2 = euler_explicite(init.r1, init.r2, init.v1, init.v2,
+                                    problem.m1, problem.m2, t, dt, problem.G)
+    return Trajectory(t=t, r1=r1, r2=r2, v1=v1, v2=v2)
+
+@register_integrator("rk4")
+def integrate_rk4(problem: TwoBodyProblem, init: InitialState, t: np.ndarray, eps: float = 0.0) -> Trajectory:
+    dt = float(t[1] - t[0])
+    r1, r2, v1, v2 = rk4_integrate(init.r1, init.r2, init.v1, init.v2,
+                                  problem.m1, problem.m2, t, dt, problem.G)
+    return Trajectory(t=t, r1=r1, r2=r2, v1=v1, v2=v2)
+
+@register_integrator("verlet")
+def integrate_verlet(problem: TwoBodyProblem, init: InitialState, t: np.ndarray, eps: float = 0.0) -> Trajectory:
+    dt = float(t[1] - t[0])
+    r1, r2, v1, v2 = verlet_integrate(init.r1, init.r2, init.v1, init.v2,
+                                     problem.m1, problem.m2, t, dt, problem.G)
+    return Trajectory(t=t, r1=r1, r2=r2, v1=v1, v2=v2)
+
+def simulate(problem: TwoBodyProblem, init: InitialState, T: float, dt: float, method: str = "rk4") -> Trajectory:
+    """Simule sur [0, T] avec pas dt, en choisissant method in {'euler','rk4','verlet'}."""
+    if method not in INTEGRATORS:
+        raise ValueError(f"Unknown method '{method}'. Choose among: {list(INTEGRATORS)}")
+    t = np.arange(0.0, T + 0.5*dt, dt)
+    return INTEGRATORS[method](problem, init, t)
+
+def erreur_vs_dt(problem: TwoBodyProblem, init: InitialState, dt_min=1e-4, dt_max=1.0, nb_points=6, T=100.0):
+    """
+    Calcule l'erreur max (sur r1) en fonction de dt pour Euler / RK4 / Verlet,
+    en gardant une durée physique simulée FIXE = T.
+    """
+    dt_list = np.logspace(np.log10(dt_min), np.log10(dt_max), nb_points)
+    out = { "euler": [], "rk4": [], "verlet": [] }
+
+    for d in dt_list:
+        t = np.arange(0.0, T, d)
+        r1_ana, r2_ana, _ = position_analytique(init.r1, init.r2, init.v1, init.v2,
+                                               problem.m1, problem.m2, t, problem.G)
+        for method in out:
+            traj = INTEGRATORS[method](problem, init, t)
+            err = np.max(np.linalg.norm(traj.r1 - r1_ana, axis=1))
+            out[method].append(err)
+
+    return dt_list, {k: np.array(v) for k, v in out.items()}
+
+def tracer_erreur_vs_dt(problem: TwoBodyProblem, init: InitialState, dt_min=1e-4, dt_max=1.0, nb_points=6, T=100.0):
+    """Version 'propre' du tracé erreur vs dt (sans variables globales)."""
+    dt_list, err = erreur_vs_dt(problem, init, dt_min=dt_min, dt_max=dt_max, nb_points=nb_points, T=T)
+
+    plt.figure(figsize=(8, 6))
+    plt.loglog(dt_list, err["euler"], marker="o", label="Euler")
+    plt.loglog(dt_list, err["rk4"], marker="o", label="RK4")
+    plt.loglog(dt_list, err["verlet"], marker="o", label="Verlet")
+    plt.xlabel("Pas de temps dt")
+    plt.ylabel("Erreur maximale (sur r1)")
+    plt.title("Erreur maximale en fonction du pas de temps")
+    plt.grid(True, which="both")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(FIG_DIR, "erreur_vs_dt.png"))
+    plt.show()
+
+    return dt_list, err["euler"], err["rk4"], err["verlet"]
+
+# -----------------
+# Tests "TIPE"
+# -----------------
+
+def _energy_drift(traj: Trajectory, problem: TwoBodyProblem) -> float:
+    E = energie_mecanique(traj.r1, traj.r2, traj.v1, traj.v2, problem.m1, problem.m2, problem.G)
+    E0 = float(E[0])
+    if E0 == 0.0:
+        return float(np.max(np.abs(E - E0)))
+    return float(np.max(np.abs((E - E0) / abs(E0))))
+
+def run_tipe_tests(verbose: bool = True) -> None:
+    """
+    Lance une série de tests numériques pertinents pour un TIPE (sans pytest).
+    Utilise des asserts -> s'arrête au premier échec.
+    """
+    def log(msg):
+        if verbose:
+            print(msg)
+
+    # Test 1 — action / réaction (Newton 3) au niveau des accélérations
+    log("[1/5] Newton 3 (action-réaction) ...")
+    m1, m2, G_ = 1.0, 3.0, 2.0
+    r1 = np.array([1.0, 0.0])
+    r2 = np.array([-2.0, 0.5])
+    a1, a2 = acceleration(r1, r2, m1, m2, G_, eps=0.0)
+    assert np.allclose(m1*a1 + m2*a2, np.zeros(2), atol=1e-12)
+
+    # Setup standard orbite circulaire (pour les tests suivants)
+    problem = TwoBodyProblem(m1=1.0, m2=2.0, G=1.0)
+    r1_0 = np.array([ 1.0, 0.0])
+    r2_0 = np.array([-1.0, 0.0])
+    v1_0, v2_0 = vitesses_circulaires(r1_0, r2_0, problem.m1, problem.m2, problem.G, sens=+1)
+    init = InitialState(r1=r1_0, r2=r2_0, v1=v1_0, v2=v2_0)
+
+    # Test 2 — centre de masse : vitesse ~ constante (RK4)
+    log("[2/5] Centre de masse ~ MRU (RK4) ...")
+    traj = simulate(problem, init, T=50.0, dt=0.01, method="rk4")
+    M = problem.m1 + problem.m2
+    R = (problem.m1*traj.r1 + problem.m2*traj.r2) / M
+    V = np.gradient(R, traj.t, axis=0)
+    speed = np.linalg.norm(V, axis=1)
+    assert float(np.max(speed) - np.min(speed)) < 1e-4
+
+    # Test 3 — énergie : Verlet dérive moins que Euler (sur long temps)
+    log("[3/5] Energie : Verlet < Euler (drift) ...")
+    dt = 0.05
+    traj_e = simulate(problem, init, T=200.0, dt=dt, method="euler")
+    traj_v = simulate(problem, init, T=200.0, dt=dt, method="verlet")
+    assert _energy_drift(traj_v, problem) < _energy_drift(traj_e, problem)
+
+    # Test 4 — ordre de convergence (sanity) : erreur baisse quand dt/2
+    log("[4/5] Convergence (sanity) ...")
+    # On évite de prendre un T trop long car l'erreur de phase peut "brouiller" le ratio.
+    # Ici, on vérifie surtout que l'erreur diminue quand on divise dt par 2, et que RK4 > Verlet > Euler en tendance.
+    def pos_error_final(method, T_, dt_):
+        t = np.arange(0.0, T_ + 0.5*dt_, dt_)
+        r1_ana, r2_ana, _ = position_analytique(init.r1, init.r2, init.v1, init.v2,
+                                               problem.m1, problem.m2, t, problem.G)
+        tr = INTEGRATORS[method](problem, init, t)
+        return float(np.linalg.norm(tr.r1[-1] - r1_ana[-1]))
+
+    T_ = 5.0
+    dt1 = 0.02
+    dt2 = dt1 / 2
+
+    e_e1 = pos_error_final("euler",  T_, dt1)
+    e_e2 = pos_error_final("euler",  T_, dt2)
+    e_v1 = pos_error_final("verlet", T_, dt1)
+    e_v2 = pos_error_final("verlet", T_, dt2)
+    e_r1 = pos_error_final("rk4",   T_, dt1)
+    e_r2 = pos_error_final("rk4",   T_, dt2)
+
+    assert e_e2 < e_e1, f"Euler: erreur ne diminue pas (e1={e_e1:.3e}, e2={e_e2:.3e})"
+    assert e_v2 < e_v1, f"Verlet: erreur ne diminue pas (e1={e_v1:.3e}, e2={e_v2:.3e})"
+    assert e_r2 < e_r1, f"RK4: erreur ne diminue pas (e1={e_r1:.3e}, e2={e_r2:.3e})"
+
+    # Tendance attendue (pas strictement garantie partout, mais normalement vraie ici)
+    assert e_r2 < e_v2, f"Attendu RK4 < Verlet (dt={dt2}): rk4={e_r2:.3e}, ver={e_v2:.3e}"
+    assert e_v2 < e_e2, f"Attendu Verlet < Euler (dt={dt2}): ver={e_v2:.3e}, eul={e_e2:.3e}"
+
+    # Test 5 — pas d'explosion (RK4)
+    log("[5/5] Pas d'explosion (RK4) ...")
+    traj = simulate(problem, init, T=100.0, dt=0.05, method="rk4")
+    d = np.linalg.norm(traj.r2 - traj.r1, axis=1)
+    assert np.isfinite(d).all()
+    assert float(d.max()) < 10.0
+
+    log("✅ Tous les tests TIPE sont passés.")
+
+# -----------------
+# Main (démo)
+# -----------------
+def _demo():
+    problem = TwoBodyProblem(m1=1.0, m2=2.0, G=1.0)
+    r_01 = np.array([1.0, 0.0])
+    r_02 = np.array([-1.0, 0.0])
+    v_01, v_02 = vitesses_circulaires(r_01, r_02, problem.m1, problem.m2, problem.G, sens=+1)
+    init = InitialState(r1=r_01, r2=r_02, v1=v_01, v2=v_02)
+
+    T = 100.0
+    dt = 0.05
+    traj_rk4 = simulate(problem, init, T=T, dt=dt, method="rk4")
+
+    # Exemple: tracer l'orbite RK4
+    affiche_positions(traj_rk4.t, traj_rk4.r1, traj_rk4.r2,
+                     label1=f"Corps 1 (RK4) m={problem.m1}",
+                     label2=f"Corps 2 (RK4) m={problem.m2}")
+
+    # Exemple: erreur vs dt
+    tracer_erreur_vs_dt(problem, init, dt_min=1e-4, dt_max=0.5, nb_points=8, T=50.0)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Simulation gravitation 2 corps (TIPE) — tout-en-un")
+    parser.add_argument("--demo", action="store_true", help="Lance une démo (plots).")
+    parser.add_argument("--run-tests", action="store_true", help="Lance les tests numériques TIPE.")
+    args = parser.parse_args()
+
+    if args.run_tests:
+        run_tipe_tests(verbose=True)
+
+    if args.demo:
+        _demo()
+
+    if (not args.run_tests) and (not args.demo):
+        print("Rien à faire. Options:")
+        print("  python main_single.py --run-tests")
+        print("  python main_single.py --demo")
