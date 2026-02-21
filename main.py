@@ -344,6 +344,7 @@ def plot_erreur(t, r_1_ana, r2_ana, r1_num, r2_num, dt, method_name=""):
     plt.title(f"Erreur entre solutions numérique et analytique avec dt = {dt}")
     plt.legend()
     plt.grid(True)
+    plt.savefig(os.path.join(FIG_DIR, f"erreur_{method_name}_dt={dt}.png"))
     plt.show()
 
 
@@ -530,8 +531,14 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0):
     return np.array(drift_rk4), np.array(drift_ver)
 
 
-# --- Test ---
-# Variable
+# ============================================================
+# Tester la conservation du moment cinétique (doit rester constant pour une orbite circulaire)  
+# ============================================================
+
+
+# ============================================================
+# Teste 
+# ============================================================
 
 m1 = 1
 m2 = 2
@@ -543,21 +550,21 @@ v_01, v_02 = vitesses_circulaires(r_01, r_02, m1, m2, G, sens=+1)
 dt = 0.1
 t = np.arange(0, 10000, dt)
 
-#================================================================================
+#=============================================================
 # calcule des positions et vitesses avec les différentes méthodes
 # r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
 # r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 # r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 # r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 
-#================================================================================
+#=============================================================
 # affichage des trajectoires
 # affiche_positions(t, r1_ana, r2_ana, label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
 # affiche_positions(t, r1_eul, r2_eul,label1=f'Corps 1 (Euler)(m = {m1})',label2=f"Corps 2 (Euler)(m = {m2})")
 # affiche_positions(t, r1_rk4, r2_rk4, label1=f"Corps 1 (RK4)(m = {m1})", label2=f"Corps 2 (RK4)(m = {m2})")
 # affiche_positions(t, r1_verlet, r2_verlet,label1="Corps 1 (Verlet)(m = {m1})",label2="Corps 2 (Verlet)(m = {m2})")
 
-#================================================================================
+#=============================================================
 # etude de l'energie mécanique
 # tracer_energie_double(
 #     t,
@@ -571,7 +578,7 @@ t = np.arange(0, 10000, dt)
 # drift_energie_vs_dt(dt_list, T=300, r_01=r_01, r_02=r_02, v_01=v_01, v_02=v_02, m1=m1, m2=m2, G=G)
 
 
-#================================================================================
+#=============================================================
 # affichage de l'erreur
 
 # plot_erreur(t, r1_ana, r2_ana, r1_eul, r2_eul, dt, method_name="Euler")
@@ -579,6 +586,7 @@ t = np.arange(0, 10000, dt)
 # plot_erreur(t, r1_ana, r2_ana, r1_verlet, r2_verlet, dt, method_name="Verlet")
 
 # tracer_erreur_vs_dt(dt_min=1e-5, dt_max=1.0, nb_points=10, T=10.0)
+
 
 # ============================================================
 # Partie 2 : N-corps
@@ -591,10 +599,13 @@ t = np.arange(0, 10000, dt)
 def accelerations_nbody(R, m, G=1.0, eps=1e-12):
     """
     Calcule les accélérations gravitationnelles pour N corps en 2D.
-
-    R : (N,2) positions
-    m : (N,) masses
-    return A : (N,2) accélérations
+    param :
+        R : positions des N corps (array de taille (N,2))
+        m : masses des N corps (array de taille (N,))
+        G : constante gravitationnelle (float, défaut=1.0)
+        eps : régularisation pour éviter les singularités (float, défaut=1e-12)
+    return :
+        A : accélérations des N corps (array de taille (N,2))
     """
     R = np.asarray(R, float)
     m = np.asarray(m, float)
@@ -622,8 +633,18 @@ def accelerations_nbody(R, m, G=1.0, eps=1e-12):
 
 def rk4_step_nbody(R, V, m, dt, G=1.0, eps=1e-12):
     """
-    Un pas RK4 pour N corps.
-    Etat : (R, V) avec R,V en (N,2)
+    Effectue un pas d'intégration en utilisant la méthode de Runge-Kutta d'ordre 4 (RK4) pour N corps en interaction gravitationnelle.
+    param :
+        R: positions actuelles des N corps (array de taille (N,2))
+        V: vitesses actuelles des N corps (array de taille (N,2))
+        m: masses des N corps (array de taille (N,))
+        dt: pas de temps (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    
+    return:
+        Rn, Vn: nouvelles positions et vitesses des N corps après le pas de temps dt (arrays de taille (N,2))
+
     """
     R = np.asarray(R, float)
     V = np.asarray(V, float)
@@ -645,8 +666,18 @@ def rk4_step_nbody(R, V, m, dt, G=1.0, eps=1e-12):
 
 def rk4_integrate_nbody(R0, V0, m, t, dt, G=1.0, eps=1e-12):
     """
-    Intégration RK4 sur la grille de temps t.
-    return Rs : (T,N,2), Vs : (T,N,2)
+    Intègre les équations du mouvement de N corps en utilisant la méthode de Runge-Kutta d'ordre 4 (RK4).
+    param :
+        R0: positions initiales des N corps (array de taille (N,2)) 
+        V0: vitesses initiales des N corps (array de taille (N,2))
+        m: masses des N corps (array de taille (N,))
+        t: temps (array-like)   
+        dt: pas de temps (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    return:
+        Rs: positions des N corps à chaque instant t (array de taille (T,N,2))
+        Vs: vitesses des N corps à chaque instant t (array de taille (T
     """
     t = np.asarray(t, float)
     Tn = len(t)
@@ -668,7 +699,16 @@ def rk4_integrate_nbody(R0, V0, m, t, dt, G=1.0, eps=1e-12):
 
 def verlet_step_nbody(R, V, m, dt, G=1.0, eps=1e-12):
     """
-    Un pas Velocity-Verlet pour N corps.
+    Effectue un pas d'intégration en utilisant la méthode de Verlet pour N corps en interaction gravitationnelle.
+    param :
+        R: positions actuelles des N corps (array de taille (N,2))
+        V: vitesses actuelles des N corps (array de taille (N,2))
+        m: masses des N corps (array de taille (N,))
+        dt: pas de temps (float)
+        G: constante gravitationnelle (float, défaut=1.0)   
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    return:
+        Rn, Vn: nouvelles positions et vitesses des N corps après le pas de temps dt (arrays de taille (N,2))
     """
     R = np.asarray(R, float)
     V = np.asarray(V, float)
@@ -683,8 +723,18 @@ def verlet_step_nbody(R, V, m, dt, G=1.0, eps=1e-12):
 
 def verlet_integrate_nbody(R0, V0, m, t, dt, G=1.0, eps=1e-12):
     """
-    Intégration Velocity-Verlet sur la grille de temps t.
-    return Rs : (T,N,2), Vs : (T,N,2)
+    Intègre les équations du mouvement de N corps en utilisant la méthode de Verlet.
+    param :
+        R0: positions initiales des N corps (array de taille (N,2))
+        V0: vitesses initiales des N corps (array de taille (N,2))
+        m: masses des N corps (array de taille (N,))
+        t: temps (array-like)
+        dt: pas de temps (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    return:
+        Rs: positions des N corps à chaque instant t (array de taille (T,N,2))
+        Vs: vitesses des N corps à chaque instant t (array de taille (T,N,2))
     """
     t = np.asarray(t, float)
     Tn = len(t)
@@ -710,8 +760,15 @@ def verlet_integrate_nbody(R0, V0, m, t, dt, G=1.0, eps=1e-12):
 
 def energie_nbody(Rs, Vs, m, G=1.0, eps=1e-12):
     """
-    Energie totale du système (array de taille T).
-    Rs: (T,N,2), Vs: (T,N,2)
+    Calcule l'énergie mécanique totale du système à N corps à chaque instant.
+    param :
+        Rs: positions des N corps à chaque instant t (array de taille (T,N,2))
+        Vs: vitesses des N corps à chaque instant t (array de taille (T ,N,2))  
+        m: masses des N corps (array de taille (N,))
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    return:
+        E: énergie mécanique totale à chaque instant t (array de taille (T,))
     """
     Rs = np.asarray(Rs, float)
     Vs = np.asarray(Vs, float)
@@ -730,6 +787,10 @@ def energie_nbody(Rs, Vs, m, G=1.0, eps=1e-12):
             Ep += -G * m[i] * m[j] / rij
 
     return Ec + Ep
+
+# ============================================================
+# à faire seulment si fait en 2 corps : vérifier la conservation du moment cinétique (doit rester constant pour une orbite circulaire)
+# ============================================================
 
 
 def moment_cinetique_nbody(Rs, Vs, m):
@@ -764,6 +825,110 @@ def barycentre_nbody(Rs, Vs, m):
     return Rcm, Vcm
 
 
+
+def run_tests_3body(m, R0, V0, dt=0.01, T=50.0, G=1.0, eps=1e-12):
+    """
+    Lance une batterie de tests sur RK4 et Verlet (N=3) :
+    - énergie (dérive relative max)
+    - moment cinétique (dérive relative max)
+    - barycentre : Vcm ~ constante ; Rcm ~ affine
+    - action-réaction sur accélérations au départ
+    - convergence dt -> dt/2 (comparaison fin de simu)
+
+    Imprime des indicateurs numériques (à toi de fixer tes seuils).
+    """
+    t = np.arange(0.0, T, dt)
+
+    # ----------------------------
+    # 0) Action-réaction (forces internes)
+    # somme(m_i a_i) doit être ~ 0 (pas de force externe)
+    # ----------------------------
+    A0 = accelerations_nbody(R0, m, G=G, eps=eps)
+    resid_force = np.linalg.norm(np.sum(m[:, None] * A0, axis=0))
+    print(f"[TEST] somme(m_i a_i) au départ = {resid_force:.3e} (doit être ~0)")
+
+    # ----------------------------
+    # 1) Simulations
+    # ----------------------------
+    Rs_rk4, Vs_rk4 = rk4_integrate_nbody(R0, V0, m, t, dt, G=G, eps=eps)
+    Rs_ver, Vs_ver = verlet_integrate_nbody(R0, V0, m, t, dt, G=G, eps=eps)
+
+    # ----------------------------
+    # 2) Invariants : énergie + moment cinétique
+    # ----------------------------
+    E_rk4 = energie_nbody(Rs_rk4, Vs_rk4, m, G=G, eps=eps)
+    E_ver = energie_nbody(Rs_ver, Vs_ver, m, G=G, eps=eps)
+
+    L_rk4 = moment_cinetique_nbody(Rs_rk4, Vs_rk4, m)
+    L_ver = moment_cinetique_nbody(Rs_ver, Vs_ver, m)
+
+    dE_rk4 = np.max(np.abs((E_rk4 - E_rk4[0]) / abs(E_rk4[0])))
+    dE_ver = np.max(np.abs((E_ver - E_ver[0]) / abs(E_ver[0])))
+
+    dL_rk4 = np.max(np.abs((L_rk4 - L_rk4[0]) / (abs(L_rk4[0]) if L_rk4[0] != 0 else 1.0)))
+    dL_ver = np.max(np.abs((L_ver - L_ver[0]) / (abs(L_ver[0]) if L_ver[0] != 0 else 1.0)))
+
+    print(f"[TEST] drift énergie max RK4   = {dE_rk4:.3e}")
+    print(f"[TEST] drift énergie max Verlet= {dE_ver:.3e}")
+    print(f"[TEST] drift Lz max RK4        = {dL_rk4:.3e}")
+    print(f"[TEST] drift Lz max Verlet     = {dL_ver:.3e}")
+
+    # ----------------------------
+    # 3) Barycentre : Vcm ~ constante ; Rcm ~ affine
+    # ----------------------------
+    Rcm_rk4, Vcm_rk4 = barycentre_nbody(Rs_rk4, Vs_rk4, m)
+    Rcm_ver, Vcm_ver = barycentre_nbody(Rs_ver, Vs_ver, m)
+
+    Vcm_var_rk4 = np.max(np.linalg.norm(Vcm_rk4 - Vcm_rk4[0], axis=1))
+    Vcm_var_ver = np.max(np.linalg.norm(Vcm_ver - Vcm_ver[0], axis=1))
+
+    # Test affine : Rcm(t) - (Rcm0 + t*Vcm0) doit rester petit
+    Rcm_pred_rk4 = Rcm_rk4[0] + t[:, None] * Vcm_rk4[0]
+    Rcm_pred_ver = Rcm_ver[0] + t[:, None] * Vcm_ver[0]
+    Rcm_resid_rk4 = np.max(np.linalg.norm(Rcm_rk4 - Rcm_pred_rk4, axis=1))
+    Rcm_resid_ver = np.max(np.linalg.norm(Rcm_ver - Rcm_pred_ver, axis=1))
+
+    print(f"[TEST] variation max Vcm RK4   = {Vcm_var_rk4:.3e}")
+    print(f"[TEST] variation max Vcm Verlet= {Vcm_var_ver:.3e}")
+    print(f"[TEST] résidu max Rcm affine RK4   = {Rcm_resid_rk4:.3e}")
+    print(f"[TEST] résidu max Rcm affine Verlet= {Rcm_resid_ver:.3e}")
+
+    # ----------------------------
+    # 4) Convergence : dt vs dt/2
+    # Compare la position finale (norme globale)
+    # ----------------------------
+    t2 = np.arange(0.0, T, dt/2)
+
+    Rs_rk4_2, Vs_rk4_2 = rk4_integrate_nbody(R0, V0, m, t2, dt/2, G=G, eps=eps)
+    Rs_ver_2, Vs_ver_2 = verlet_integrate_nbody(R0, V0, m, t2, dt/2, G=G, eps=eps)
+
+    # on compare la fin au même temps T - dt (approximatif)
+    # on prend l’instant final commun (dernier index de t)
+    R_end_rk4 = Rs_rk4[-1]
+    R_end_rk4_2 = Rs_rk4_2[-1]
+    R_end_ver = Rs_ver[-1]
+    R_end_ver_2 = Rs_ver_2[-1]
+
+    err_end_rk4 = np.linalg.norm(R_end_rk4 - R_end_rk4_2)
+    err_end_ver = np.linalg.norm(R_end_ver - R_end_ver_2)
+
+    print(f"[TEST] convergence fin RK4   ||R_dt - R_dt/2|| = {err_end_rk4:.3e}")
+    print(f"[TEST] convergence fin Verlet||R_dt - R_dt/2|| = {err_end_ver:.3e}")
+
+    return {
+        "resid_force0": resid_force,
+        "dE_rk4": dE_rk4, "dE_ver": dE_ver,
+        "dL_rk4": dL_rk4, "dL_ver": dL_ver,
+        "Vcm_var_rk4": Vcm_var_rk4, "Vcm_var_ver": Vcm_var_ver,
+        "Rcm_resid_rk4": Rcm_resid_rk4, "Rcm_resid_ver": Rcm_resid_ver,
+        "err_end_rk4": err_end_rk4, "err_end_ver": err_end_ver,
+    }
+    
+
+
+
+
+    
 # ============================================================
 # 4) Scénario 3 corps simple : "restricted 3-body" (planète test)
 # ============================================================
@@ -821,8 +986,12 @@ def distance_trajectoires(RsA, RsB):
 
 def plot_trajectoires_3corps(Rs, title="Trajectoires 3 corps"):
     """
-    Trace les trajectoires (x,y) des 3 corps.
-    Rs : (T,3,2)
+    Affiche les trajectoires des 3 corps à partir de Rs (T,N,2).
+    param :
+        Rs: positions des N corps à chaque instant t (array de taille (T,N,2))
+        title: titre du graphique (str)
+    return:
+        None
     """
     plt.figure(figsize=(6, 6))
     for i in range(Rs.shape[1]):
@@ -911,3 +1080,10 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+    
+    
+m, R0, V0 = scenario_restricted_3body(m1=1.0, m2=2.0, m3=1e-3, G=G)
+
+# tests "rapides" (ne prend pas 2h)
+results = run_tests_3body(m, R0, V0, dt=0.005, T=20.0, G=G)
+print(results)
