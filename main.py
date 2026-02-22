@@ -1,4 +1,3 @@
-
 import numpy as np
 import math as mt
 import matplotlib.pyplot as plt
@@ -585,7 +584,7 @@ t = np.arange(0, 10000, dt)
 # plot_erreur(t, r1_ana, r2_ana, r1_rk4, r2_rk4, dt, method_name="RK4")
 # plot_erreur(t, r1_ana, r2_ana, r1_verlet, r2_verlet, dt, method_name="Verlet")
 
-# tracer_erreur_vs_dt(dt_min=1e-5, dt_max=1.0, nb_points=10, T=10.0)
+# tracer_erreur_vs_dt(dt_min=1e-5, dt_max=1.0, nb_points=11, T=10.0)
 
 
 # ============================================================
@@ -956,10 +955,15 @@ def scenario_restricted_3body(m1=1.0, m2=2.0, m3=1e-3, G=1.0):
     v1_0 = -(m2 / M) * v_rel
     v2_0 =  (m1 / M) * v_rel
 
-    # 3e corps : un peu plus loin, vitesse initiale approximative
-    r3_0 = np.array([0.0, 2.5])
-    # vitesse "à peu près orbitale" autour du barycentre (approx)
-    v3_0 = np.array([ -0.7, 0.0])
+    # 3e corps : plus loin + vitesse orbitale autour du barycentre (approx)
+    r3_0 = np.array([0.0, 4.0])
+
+    M = m1 + m2
+    r = np.linalg.norm(r3_0)
+    v_circ = np.sqrt(G * M / r)
+
+    # tangente (sens trigo) : à (0,r) -> vitesse vers (-v,0) ou (+v,0)
+    v3_0 = np.array([-v_circ, 0.0]) * 0.95  # 0.95 => petite ellipse stable
 
     R0 = np.stack([r1_0, r2_0, r3_0], axis=0)
     V0 = np.stack([v1_0, v2_0, v3_0], axis=0)
@@ -1007,33 +1011,42 @@ def plot_trajectoires_3corps(Rs, title="Trajectoires 3 corps"):
 
 
 def plot_invariants(t, E, L, title="Invariants"):
-    """
-    Trace (E-E0)/|E0| et (L-L0)/|L0|
-    """
+
     E0 = E[0]
     L0 = L[0]
+
+    # --- Energie ---
     dE = (E - E0) / abs(E0) if E0 != 0 else (E - E0)
-    dL = (L - L0) / abs(L0) if L0 != 0 else (L - L0)
+
+    # --- Moment cinétique ---
+    if abs(L0) < 1e-8:
+        dL = (L - L0)          # dérive absolue
+        ylabelL = r"$(L - L_0)$"
+    else:
+        dL = (L - L0) / abs(L0)
+        ylabelL = r"$(L - L_0)/|L_0|$"
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+    # --- Energie ---
     ax1.plot(t, dE)
     ax1.set_title("Dérive énergie")
     ax1.set_xlabel("Temps")
-    ax1.set_ylabel(r"$(E-E_0)/|E_0|$")
+    ax1.set_ylabel(r"$(E - E_0)/|E_0|$")
     ax1.grid(True)
     ax1.ticklabel_format(style="plain", axis="y", useOffset=False)
 
-    ax2.plot(t, dL)
+    # --- Moment cinétique ---
+    ax2.plot(t, dL)  
     ax2.set_title("Dérive moment cinétique")
     ax2.set_xlabel("Temps")
-    ax2.set_ylabel(r"$(L-L_0)/|L_0|$")
+    ax2.set_ylabel(ylabelL)
     ax2.grid(True)
     ax2.ticklabel_format(style="plain", axis="y", useOffset=False)
 
     plt.suptitle(title)
     plt.tight_layout()
     plt.show()
-
 
 # ============================================================
 # 7) DEMO 3 CORPS (à mettre en bas, à la place de tes tests)
