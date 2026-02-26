@@ -8,10 +8,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIG_DIR = os.path.join(BASE_DIR, "figures")
 os.makedirs(FIG_DIR, exist_ok=True)
 
+parameters = {"axes.labelsize": 20, "axes.titlesize": 20, "figure.titlesize": 20, "figure.figsize": (8, 6), "lines.linewidth": 2, "lines.markersize": 8, "legend.fontsize": 14}
+plt.rcParams.update(parameters)
+
 # Variables globales
 G = 1.0  # constante gravitationnelle (unités arbitraires)
-parameters = {"axes.labelsize": 20, "axes.titlesize": 20, "figure.titlesize": 20}
-plt.rcParams.update(parameters)
+
 
 # ============================================================
 # Partie 1 : 2-corps
@@ -343,7 +345,7 @@ def plot_erreur(t, r_1_ana, r2_ana, r1_num, r2_num, dt, method_name=""):
     plt.title(f"Erreur entre solutions numérique et analytique avec dt = {dt}")
     plt.legend()
     plt.grid(True)
-    plt.savefig(os.path.join(FIG_DIR, f"erreur_{method_name}_dt={dt}.png"))
+    plt.savefig(os.path.join(FIG_DIR, f"erreur_{method_name}_dt={dt}.png"),bbox_inches='tight')
     plt.show()
 
 
@@ -400,8 +402,7 @@ def tracer_erreur_vs_dt(dt_min=1e-4, dt_max=1.0, nb_points=6, T=100.0):
     plt.title("Erreur maximale en fonction du pas de temps")
     plt.grid(True, which="both")
     plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, "erreur_vs_dt.png"))
+    plt.savefig(os.path.join(FIG_DIR, "erreur_vs_dt.png"),bbox_inches='tight')
     plt.show()
 
     return dt_list, np.array(erreur_euler), np.array(erreur_rk4), np.array(erreur_verlet)
@@ -478,8 +479,7 @@ def tracer_energie_double(t, r1_eul, r2_eul, v1_eul, v2_eul, r1_rk4, r2_rk4, v1_
     for ax in (ax1, ax2):
         ax.ticklabel_format(style="plain", axis="y", useOffset=False)
 
-    plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, "conservation_energie.png"))
+    plt.savefig(os.path.join(FIG_DIR, "conservation_energie.png"),bbox_inches='tight')
     plt.show()
 
 
@@ -523,6 +523,7 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0):
     plt.xlabel("dt")
     plt.ylabel(r"max |(E - E0)/|E0||")
     plt.title("Dérive max d'énergie en fonction de dt")
+    plt.savefig(os.path.join(FIG_DIR, "drift_energie_vs_dt.png"),bbox_inches='tight')
     plt.grid(True, which="both")
     plt.legend()
     plt.show()
@@ -536,7 +537,7 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0):
 
 
 # ============================================================
-# Teste 
+# Testes 2-corps
 # ============================================================
 
 m1 = 1
@@ -551,6 +552,7 @@ t = np.arange(0, 10000, dt)
 
 #=============================================================
 # calcule des positions et vitesses avec les différentes méthodes
+
 # r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
 # r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 # r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
@@ -558,6 +560,7 @@ t = np.arange(0, 10000, dt)
 
 #=============================================================
 # affichage des trajectoires
+
 # affiche_positions(t, r1_ana, r2_ana, label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
 # affiche_positions(t, r1_eul, r2_eul,label1=f'Corps 1 (Euler)(m = {m1})',label2=f"Corps 2 (Euler)(m = {m2})")
 # affiche_positions(t, r1_rk4, r2_rk4, label1=f"Corps 1 (RK4)(m = {m1})", label2=f"Corps 2 (RK4)(m = {m2})")
@@ -565,6 +568,7 @@ t = np.arange(0, 10000, dt)
 
 #=============================================================
 # etude de l'energie mécanique
+
 # tracer_energie_double(
 #     t,
 #     r1_eul, r2_eul, v1_eul, v2_eul,
@@ -627,7 +631,7 @@ def accelerations_nbody(R, m, G=1.0, eps=1e-12):
 
 
 # ============================================================
-# 2) Intégrateurs N-corps : RK4 et Velocity-Verlet
+#  Intégrateurs N-corps : RK4 et Velocity-Verlet
 # ============================================================
 
 def rk4_step_nbody(R, V, m, dt, G=1.0, eps=1e-12):
@@ -754,7 +758,7 @@ def verlet_integrate_nbody(R0, V0, m, t, dt, G=1.0, eps=1e-12):
 
 
 # ============================================================
-# 3) Invariants / diagnostics N-corps
+# Invariants 
 # ============================================================
 
 def energie_nbody(Rs, Vs, m, G=1.0, eps=1e-12):
@@ -929,7 +933,7 @@ def run_tests_3body(m, R0, V0, dt=0.01, T=50.0, G=1.0, eps=1e-12):
 
     
 # ============================================================
-# 4) Scénario 3 corps simple : "restricted 3-body" (planète test)
+# Scénario 3 corps simple : "restricted 3-body" (planète test)
 # ============================================================
 
 def scenario_restricted_3body(m1=1.0, m2=2.0, m3=1e-3, G=1.0):
@@ -972,7 +976,7 @@ def scenario_restricted_3body(m1=1.0, m2=2.0, m3=1e-3, G=1.0):
 
 
 # ============================================================
-# 5) Expérience chaos : sensibilité aux conditions initiales
+# Expérience chaos : sensibilité aux conditions initiales
 # ============================================================
 
 def distance_trajectoires(RsA, RsB):
@@ -985,7 +989,7 @@ def distance_trajectoires(RsA, RsB):
 
 
 # ============================================================
-# 6) Plots utiles
+# Plots 
 # ============================================================
 
 def plot_trajectoires_3corps(Rs, title="Trajectoires 3 corps"):
@@ -1005,8 +1009,8 @@ def plot_trajectoires_3corps(Rs, title="Trajectoires 3 corps"):
     plt.xlabel("x")
     plt.ylabel("y")
     plt.title(title)
+    plt.savefig(os.path.join(FIG_DIR, f"{title.replace(' ', '_')}.png"),bbox_inches='tight')
     plt.legend()
-    plt.tight_layout()
     plt.show()
 
 
@@ -1026,7 +1030,7 @@ def plot_invariants(t, E, L, title="Invariants"):
         dL = (L - L0) / abs(L0)
         ylabelL = r"$(L - L_0)/|L_0|$"
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5), constrained_layout=True)
 
     # --- Energie ---
     ax1.plot(t, dE)
@@ -1045,58 +1049,357 @@ def plot_invariants(t, E, L, title="Invariants"):
     ax2.ticklabel_format(style="plain", axis="y", useOffset=False)
 
     plt.suptitle(title)
-    plt.tight_layout()
+    plt.savefig(os.path.join(FIG_DIR, f"{title.replace(' ', '_')}.png"),bbox_inches='tight')
     plt.show()
 
 # ============================================================
-# 7) DEMO 3 CORPS (à mettre en bas, à la place de tes tests)
+# DEMO 3 CORPS (à mettre en bas, à la place de tes tests)
 # ============================================================
 
-if __name__ == "__main__":
-    G = 1.0
-    m, R0, V0 = scenario_restricted_3body(m1=1.0, m2=2.0, m3=1e-3, G=G)
+# if __name__ == "__main__":
+#     G = 1.0
+#     m, R0, V0 = scenario_restricted_3body(m1=1.0, m2=2.0, m3=1e-3, G=G)
 
-    dt = 0.01
-    T = 300.0
+#     dt = 0.01
+#     T = 300.0
+#     t = np.arange(0.0, T, dt)
+
+#     # --- Simulation RK4 ---
+#     Rs_rk4, Vs_rk4 = rk4_integrate_nbody(R0, V0, m, t, dt, G=G)
+#     E_rk4 = energie_nbody(Rs_rk4, Vs_rk4, m, G=G)
+#     L_rk4 = moment_cinetique_nbody(Rs_rk4, Vs_rk4, m)
+
+#     # --- Simulation Verlet ---
+#     Rs_ver, Vs_ver = verlet_integrate_nbody(R0, V0, m, t, dt, G=G)
+#     E_ver = energie_nbody(Rs_ver, Vs_ver, m, G=G)
+#     L_ver = moment_cinetique_nbody(Rs_ver, Vs_ver, m)
+
+#     # Trajectoires
+#     plot_trajectoires_3corps(Rs_rk4, "3 corps (RK4)")
+#     plot_trajectoires_3corps(Rs_ver, "3 corps (Verlet)")
+
+#     # Invariants
+#     plot_invariants(t, E_rk4, L_rk4, "Invariants 3 corps (RK4)")
+#     plot_invariants(t, E_ver, L_ver, "Invariants 3 corps (Verlet)")
+
+#     # --- Sensibilité aux CI (chaos) : petite perturbation sur le 3e corps ---
+#     R0b = R0.copy()
+#     R0b[2, 0] += 1e-6  # perturbation minuscule
+
+#     Rs_ver_b, Vs_ver_b = verlet_integrate_nbody(R0b, V0, m, t, dt, G=G)
+#     d = distance_trajectoires(Rs_ver, Rs_ver_b)
+
+#     plt.figure()
+#     plt.plot(t, d)
+#     plt.xlabel("Temps")
+#     plt.ylabel("Distance entre deux trajectoires")
+#     plt.title("Sensibilité aux conditions initiales (Verlet)")
+#     plt.grid(True)
+#     plt.savefig(os.path.join(FIG_DIR, "sensibilite_CI.png"),bbox_inches='tight')
+#     plt.show()
+    
+    
+# m, R0, V0 = scenario_restricted_3body(m1=1.0, m2=2.0, m3=1e-3, G=G)
+
+# # tests "rapides" (ne prend pas 2h)
+# results = run_tests_3body(m, R0, V0, dt=0.005, T=20.0, G=G)
+# print(results)
+
+
+
+def normalize_com(R0, V0, m):
+    """Recentre pour avoir Rcm=0 et Vcm=0 au départ (utile pour la figure-eight)
+    param :
+    R0: positions initiales des N corps (array de taille (N,2))
+    V0: vitesses initiales des N corps (array de taille (N,2))
+    m: masses des N corps (array de taille (N,))
+    return:
+    R0n, V0n: positions et vitesses normalisées (array de taille (N,2))
+    """
+    V0 = np.asarray(V0, float)
+    m = np.asarray(m, float)
+    M = np.sum(m)
+
+    Rcm = np.sum(R0 * m[:, None], axis=0) / M
+    Vcm = np.sum(V0 * m[:, None], axis=0) / M
+
+    return R0 - Rcm, V0 - Vcm
+
+def scenario_figure_eight(G=1.0):
+    """
+    Orbite périodique en '8' (choreography) pour 3 masses égales.
+    param :
+    G: constante gravitationnelle (float, défaut=1.0)
+    return: (masses, R0, V0)
+    """
+    m = np.array([1.0, 1.0, 1.0], float)
+
+    R0 = np.array([
+        [ 0.97000436, -0.24308753],
+        [-0.97000436,  0.24308753],
+        [ 0.0,         0.0       ]
+    ], float)
+
+    V0 = np.array([
+        [ 0.466203685,  0.43236573],
+        [ 0.466203685,  0.43236573],
+        [-0.93240737,  -0.86473146]
+    ], float)
+
+    # sécurité : COM exactement au repos
+    R0, V0 = normalize_com(R0, V0, m)
+    return m, R0, V0
+    
+def demo_figure_eight(dt=0.005, T=50.0, G=1.0, eps=1e-12, method="verlet"):
+    """
+    test de la figure-eight : intégration + invariants + plot
+    param :
+    dt: pas de temps (float)
+    T: durée totale de la simulation (float)
+    G: constante gravitationnelle (float, défaut=1.0)   
+    eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    method: méthode d'intégration ("rk4" ou "verlet")
+    return:
+    t, m, R0, V0, Rs, Vs, E, L
+     - t: temps (array de taille (Tn,))
+     - m: masses des N corps (array de taille (N,))
+     - R0: positions initiales des N corps (array de taille (N,2))
+     - V0: vitesses initiales des N corps (array de taille (N,2))
+     - Rs: positions des N corps à chaque instant t (array de taille (Tn,N,2))
+     - Vs: vitesses des N corps à chaque instant t (array de taille (Tn,N,2))
+     - E: énergie mécanique totale à chaque instant t (array de taille (Tn,))
+     - L: moment cinétique total à chaque instant t (array de taille (Tn,))
+    """
+    m, R0, V0 = scenario_figure_eight(G=G)
     t = np.arange(0.0, T, dt)
 
-    # --- Simulation RK4 ---
-    Rs_rk4, Vs_rk4 = rk4_integrate_nbody(R0, V0, m, t, dt, G=G)
-    E_rk4 = energie_nbody(Rs_rk4, Vs_rk4, m, G=G)
-    L_rk4 = moment_cinetique_nbody(Rs_rk4, Vs_rk4, m)
+    if method == "rk4":
+        Rs, Vs = rk4_integrate_nbody(R0, V0, m, t, dt, G=G, eps=eps)
+        name = "RK4"
+    else:
+        Rs, Vs = verlet_integrate_nbody(R0, V0, m, t, dt, G=G, eps=eps)
+        name = "Verlet"
 
-    # --- Simulation Verlet ---
-    Rs_ver, Vs_ver = verlet_integrate_nbody(R0, V0, m, t, dt, G=G)
-    E_ver = energie_nbody(Rs_ver, Vs_ver, m, G=G)
-    L_ver = moment_cinetique_nbody(Rs_ver, Vs_ver, m)
+    # invariants
+    E = energie_nbody(Rs, Vs, m, G=G, eps=eps)
+    L = moment_cinetique_nbody(Rs, Vs, m)
 
-    # Trajectoires
-    plot_trajectoires_3corps(Rs_rk4, "3 corps (RK4)")
-    plot_trajectoires_3corps(Rs_ver, "3 corps (Verlet)")
+    plot_trajectoires_3corps(Rs, title=f"Figure-eight (3 corps) — {name}")
+    plot_invariants(t, E, L, title=f"Invariants — Figure-eight — {name}")
 
-    # Invariants
-    plot_invariants(t, E_rk4, L_rk4, "Invariants 3 corps (RK4)")
-    plot_invariants(t, E_ver, L_ver, "Invariants 3 corps (Verlet)")
+    return t, m, R0, V0, Rs, Vs, E, L
 
-    # --- Sensibilité aux CI (chaos) : petite perturbation sur le 3e corps ---
-    R0b = R0.copy()
-    R0b[2, 0] += 1e-6  # perturbation minuscule
+def divergence_to_reference(Rs_ref, Rs_test):
+    """
+    Mesure de divergence : distance max à la trajectoire de référence sur [0,T]
+    param :
+    Rs_ref: positions de référence (array de taille (Tn,N,2))
+    Rs_test: positions à tester (array de taille (Tn,N,2))
+    return:
+    divergence: distance maximale entre Rs_test et Rs_ref sur tous les instants t (float)
+     - calculée comme max_t ||Rs_test(t) - Rs_ref(t)||, où ||.|| est la norme globale sur tous les corps (sqrt(sum_i ||r_i_test - r_i_ref||^2)))
 
-    Rs_ver_b, Vs_ver_b = verlet_integrate_nbody(R0b, V0, m, t, dt, G=G)
-    d = distance_trajectoires(Rs_ver, Rs_ver_b)
+    """
+    return np.max(np.linalg.norm(Rs_test - Rs_ref, axis=(1, 2)))
 
-    plt.figure()
-    plt.plot(t, d)
-    plt.xlabel("Temps")
-    plt.ylabel("Distance entre deux trajectoires")
-    plt.title("Sensibilité aux conditions initiales (Verlet)")
-    plt.grid(True)
-    plt.tight_layout()
+def ftle_from_divergence(D, D0, T):
+    """
+    FTLE (finite-time Lyapunov exponent) :
+    lambda_T = (1/T) * ln(D/D0)
+    """
+    return (1.0 / T) * np.log(D / D0)
+
+def divergence_map_figure_eight(
+    dx_min=-0.02, dx_max=0.02,
+    dy_min=-0.02, dy_max=0.02,
+    n=41,
+    dt=0.005, T=6.3259,   # IMPORTANT : période ~ 6.3259
+    G=1.0, eps=1e-12,
+    body_index=0,         # corps perturbé
+    method="verlet"
+):
+    """
+    Carte de divergence autour de la figure-eight :
+    Z(dx,dy) = log10( max_t ||R_test(t) - R_ref(t)|| )
+    param :
+    dx_min, dx_max: intervalle de perturbation en x (float)
+    dy_min, dy_max: intervalle de perturbation en y (float)
+    n: nombre de points dans chaque direction (int)
+    dt: pas de temps pour l'intégration (float) 
+    T: durée totale de la simulation (float)
+    G: constante gravitationnelle (float, défaut=1.0)
+    eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    body_index: index du corps perturbé (int, 0, 1 ou 2)
+    method: méthode d'intégration ("rk4" ou "verlet")
+    return:
+    dxs, dys, Z
+     - dxs: valeurs de perturbation en x (array de taille (n,))
+     - dys: valeurs de perturbation en y (array de taille (n,))
+     - Z: carte de divergence (array de taille (n,n)), où Z[j,i] correspond à la perturbation (dxs[i], dys[j])
+    """
+
+    m, R0_ref, V0_ref = scenario_figure_eight(G=G)
+    t = np.arange(0.0, T, dt)
+
+    # --- trajectoire de référence (dx=dy=0) ---
+    if method == "rk4":
+        Rs_ref, Vs_ref = rk4_integrate_nbody(R0_ref, V0_ref, m, t, dt, G=G, eps=eps)
+    else:
+        Rs_ref, Vs_ref = verlet_integrate_nbody(R0_ref, V0_ref, m, t, dt, G=G, eps=eps)
+
+    dxs = np.linspace(dx_min, dx_max, n)
+    dys = np.linspace(dy_min, dy_max, n)
+
+    Z = np.zeros((n, n), float)
+
+    for i, dx in enumerate(dxs):
+        for j, dy in enumerate(dys):
+            R0 = R0_ref.copy()
+            V0 = V0_ref.copy()
+
+            # perturbation sur un corps
+            R0[body_index, 0] += dx
+            R0[body_index, 1] += dy
+
+            # recentre barycentre (translation + vitesse globale)
+            R0, V0 = normalize_com(R0, V0, m)
+
+            # intégration
+            if method == "rk4":
+                Rs, Vs = rk4_integrate_nbody(R0, V0, m, t, dt, G=G, eps=eps)
+            else:
+                Rs, Vs = verlet_integrate_nbody(R0, V0, m, t, dt, G=G, eps=eps)
+
+            # divergence à la référence
+            err = divergence_to_reference(Rs_ref, Rs)
+
+            # log pour une carte lisible
+            Z[j,i] = np.log10(max(err, 1e-12))
+
+    # --- plot ---
+    plt.figure(figsize=(7, 6))
+    plt.imshow(Z, origin="lower",
+        extent=[dx_min, dx_max, dy_min, dy_max],
+        aspect="auto",
+        vmin=-6, vmax=-1)
+    plt.colorbar(label=r"$\log_{10}(D)$ (divergence à la trajectoire)")
+    plt.xlabel(r"$\Delta x$")
+    plt.ylabel(r"$\Delta y$")
+    plt.title(f"Carte de divergence autour de la figure-eight ({method}, T={T}, dt={dt})")
+    plt.savefig(os.path.join(FIG_DIR, f"divergence_map_figure_eight_{method}_dt_{dt}_T_{T}_dx_min_{dx_min}.png"),bbox_inches='tight')
     plt.show()
-    
-    
-m, R0, V0 = scenario_restricted_3body(m1=1.0, m2=2.0, m3=1e-3, G=G)
 
-# tests "rapides" (ne prend pas 2h)
-results = run_tests_3body(m, R0, V0, dt=0.005, T=20.0, G=G)
-print(results)
+    return dxs, dys, Z
+
+def lyapunov_map_figure_eight(
+    dx_min=-0.02, dx_max=0.02,
+    dy_min=-0.02, dy_max=0.02,
+    n=51,
+    dt=0.005, T=6.3259*2,
+    G=1.0, eps=1e-12,
+    body_index=0,
+    method="verlet",
+    use_max_over_time=True,   # True = D = max_t ||R-Rref|| ; False = D(T) seulement
+    clip_lambda=None          # ex: (0, 2) pour limiter l'échelle des couleurs
+):
+    """
+    Carte FTLE (Lyapunov local sur temps fini) autour de la figure-eight.
+    On calcule lambda_T(dx,dy) = (1/T) ln( D / D0 )
+    avec D0 = sqrt(dx^2 + dy^2), D = séparation (finale ou max sur le temps).
+
+    - use_max_over_time=True : plus robuste (comme ta carte divergence)
+    - use_max_over_time=False: plus "Lyapunov pur" (à temps T)
+    """
+
+    m, R0_ref, V0_ref = scenario_figure_eight(G=G)
+    t = np.arange(0.0, T, dt)
+
+    # Trajectoire de référence
+    if method == "rk4":
+        Rs_ref, Vs_ref = rk4_integrate_nbody(R0_ref, V0_ref, m, t, dt, G=G, eps=eps)
+    else:
+        Rs_ref, Vs_ref = verlet_integrate_nbody(R0_ref, V0_ref, m, t, dt, G=G, eps=eps)
+
+    dxs = np.linspace(dx_min, dx_max, n)
+    dys = np.linspace(dy_min, dy_max, n)
+    LAM = np.full((n, n), np.nan, float)
+
+    for i, dx in enumerate(dxs):
+        for j, dy in enumerate(dys):
+            D0 = np.hypot(dx, dy)
+            if D0 == 0.0:
+                LAM[j, i] = 0.0
+                continue
+
+            R0 = R0_ref.copy()
+            V0 = V0_ref.copy()
+
+            # Perturbation
+            R0[body_index, 0] += dx
+            R0[body_index, 1] += dy
+
+            # Recentre COM pour comparer proprement
+            R0, V0 = normalize_com(R0, V0, m)
+
+            # Intègre
+            if method == "rk4":
+                Rs, Vs = rk4_integrate_nbody(R0, V0, m, t, dt, G=G, eps=eps)
+            else:
+                Rs, Vs = verlet_integrate_nbody(R0, V0, m, t, dt, G=G, eps=eps)
+
+            # Séparation
+            if use_max_over_time:
+                D = np.max(np.linalg.norm(Rs - Rs_ref, axis=(1, 2)))
+            else:
+                D = np.linalg.norm(Rs[-1] - Rs_ref[-1])
+
+            # Evite log(0) si super proche
+            D = max(D, 1e-16)
+
+            lam = ftle_from_divergence(D, D0, T)
+            LAM[j, i] = lam
+
+    # Option : clip de l'échelle (juste pour l'affichage)
+    Lplot = LAM.copy()
+    if clip_lambda is not None:
+        lo, hi = clip_lambda
+        Lplot = np.clip(Lplot, lo, hi)
+
+    # Plot
+    plt.figure(figsize=(7, 6))
+    plt.imshow(
+        Lplot,
+        origin="lower",
+        extent=[dx_min, dx_max, dy_min, dy_max],
+        aspect="auto"
+    )
+    plt.colorbar(label=r"$\lambda_T$ (FTLE)  [$1/\mathrm{time}$]")
+    plt.xlabel(r"$\Delta x$")
+    plt.ylabel(r"$\Delta y$")
+    mode = "max_t" if use_max_over_time else "final"
+    plt.title(f"Carte Lyapunov locale (FTLE, {method}, mode={mode}, T={T}, dt={dt})")
+    plt.savefig(os.path.join(FIG_DIR, f"lyapunov_map_figure_eight_{method}_mode_{mode}_dt_{dt}_T_{T}_dx_min_{dx_min}.png"),bbox_inches='tight')
+    plt.show()
+
+    return dxs, dys, LAM
+
+# divergence_map_figure_eight(
+#     dx_min=-0.02, dx_max=0.02,
+#     dy_min=-0.02, dy_max=0.02,
+#     n=81,
+#     T=6.3259*2,
+#     dt=0.005,
+#     method="verlet"
+# )
+# demo_figure_eight(dt=0.005, T=100.0, method="verlet")
+
+lyapunov_map_figure_eight(
+    dx_min=-0.02, dx_max=0.02,
+    dy_min=-0.02, dy_max=0.02,
+    n=61,
+    dt=0.005,
+    T=6.3259*2,
+    method="verlet",
+    use_max_over_time=True,
+    clip_lambda=(0.0, 2.0)
+)
