@@ -11,6 +11,8 @@ os.makedirs(FIG_DIR, exist_ok=True)
 parameters = {"axes.labelsize": 20, "axes.titlesize": 20, "figure.titlesize": 20, "figure.figsize": (8, 6), "lines.linewidth": 2, "lines.markersize": 8, "legend.fontsize": 14}
 plt.rcParams.update(parameters)
 
+couleur = {"Verlet ": "green", "RK4": "orange", "Euler": "blue", "Analytique": "gray"}
+
 # Variables globales
 G = 1.0  # constante gravitationnelle (unités arbitraires)
 
@@ -295,21 +297,22 @@ def verlet_integrate(r1_0, r2_0, v1_0, v2_0, m1, m2, t, dt, G=1.0):
     return r1, r2, v1, v2
 
 
-def affiche_positions(t, r1, r2, label1="Corps 1", label2="Corps 2"):
+def affiche_positions(t, r1, r2, methode,label1="Corps 1", label2="Corps 2"):
     """
     Affiche les trajectoires des deux corps.
     param :
         t: temps (array-like)
         r1: positions du corps 1 (array-like)
         r2: positions du corps 2 (array-like)
+        methode : nom de la méthode utilisée (str)
         label1: label pour le corps 1 (str)
         label2: label pour le corps 2 (str)
     return:
         None
     """
     plt.figure()
-    plt.plot(r1[:, 0], r1[:, 1], label=label1)
-    plt.plot(r2[:, 0], r2[:, 1], label=label2)
+    plt.plot(r1[:, 0], r1[:, 1], label=label1, color=couleur.get(methode, "tab:blue"))
+    plt.plot(r2[:, 0], r2[:, 1], label=label2, color=couleur.get(methode, "tab:blue"))
     plt.xlabel("x")
     plt.ylabel("y")
     plt.title("Trajectoires des deux corps")
@@ -337,8 +340,8 @@ def plot_erreur(t, r_1_ana, r2_ana, r1_num, r2_num, dt, method_name=""):
     err2 = np.linalg.norm(r2_num - r2_ana, axis=-1)
 
     plt.figure()
-    plt.plot(t, err1, label=f"Erreur Corps 1 ({method_name})")
-    plt.plot(t, err2, label=f"Erreur Corps 2 ({method_name})")
+    plt.plot(t, err1, label=f"Erreur Corps 1 ({method_name})", color=couleur.get(method_name, "tab:blue"))
+    plt.plot(t, err2, label=f"Erreur Corps 2 ({method_name})", color=couleur.get(method_name, "tab:blue"))
 
     plt.xlabel("Temps")
     plt.ylabel("Erreur (distance)")
@@ -394,9 +397,9 @@ def tracer_erreur_vs_dt(dt_min=1e-4, dt_max=1.0, nb_points=6, T=100.0):
 
     # Tracé
     plt.figure(figsize=(8, 6))
-    plt.loglog(dt_list, erreur_euler, marker="o", label="Euler")
-    plt.loglog(dt_list, erreur_rk4, marker="o", label="RK4")
-    plt.loglog(dt_list, erreur_verlet, marker="o", label="Verlet")
+    plt.loglog(dt_list, erreur_euler, marker="o", label="Euler", colors = "tab:blue")
+    plt.loglog(dt_list, erreur_rk4, marker="o", label="RK4", colors = "tab:orange")
+    plt.loglog(dt_list, erreur_verlet, marker="o", label="Verlet", colors = "tab:green")
     plt.xlabel("Pas de temps dt")
     plt.ylabel("Erreur maximale")
     plt.title("Erreur maximale en fonction du pas de temps")
@@ -460,17 +463,17 @@ def tracer_energie_double(t, r1_eul, r2_eul, v1_eul, v2_eul, r1_rk4, r2_rk4, v1_
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
-    ax1.plot(t, y_eul, label="Euler")
-    ax1.plot(t, y_rk4, label="RK4")
-    ax1.plot(t, y_ver, label="Verlet")
+    ax1.plot(t, y_eul, label="Euler",color=couleur.get("Euler", "tab:blue"))
+    ax1.plot(t, y_rk4, label="RK4", color=couleur.get("RK4", "tab:orange"))
+    ax1.plot(t, y_ver, label="Verlet", color=couleur.get("Verlet", "tab:green"))
     ax1.set_title("Dérive de l'énergie (toutes méthodes)")
     ax1.set_xlabel("Temps")
     ax1.set_ylabel(r"$(E - E_0)/|E_0|$")
     ax1.grid(True)
     ax1.legend()
 
-    ax2.plot(t, y_rk4, label="RK4")
-    ax2.plot(t, y_ver, label="Verlet")
+    ax2.plot(t, y_rk4, label="RK4", color=couleur.get("RK4", "tab:orange"))
+    ax2.plot(t, y_ver, label="Verlet", color=couleur.get("Verlet", "tab:green"))
     ax2.set_title("Zoom : RK4 vs Verlet")
     ax2.set_xlabel("Temps")
     ax2.grid(True)
@@ -518,8 +521,8 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0):
         drift_ver.append(np.max(np.abs(y_ver)))
 
     plt.figure(figsize=(8, 6))
-    plt.loglog(dt_list, drift_rk4, marker="o", label="RK4")
-    plt.loglog(dt_list, drift_ver, marker="o", label="Verlet")
+    plt.loglog(dt_list, drift_rk4, marker="o", label="RK4", color=couleur.get("RK4", "tab:orange"))
+    plt.loglog(dt_list, drift_ver, marker="o", label="Verlet", color=couleur.get("Verlet", "tab:green"))
     plt.xlabel("dt")
     plt.ylabel(r"max |(E - E0)/|E0||")
     plt.title("Dérive max d'énergie en fonction de dt")
@@ -548,15 +551,15 @@ r_02 = (-1.0, 0.0)
 v_01, v_02 = vitesses_circulaires(r_01, r_02, m1, m2, G, sens=+1)
 
 dt = 0.1
-t = np.arange(0, 10000, dt)
+t = np.arange(0, 500, dt)
 
 #=============================================================
 # calcule des positions et vitesses avec les différentes méthodes
 
-# r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
-# r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-# r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-# r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
+r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 
 #=============================================================
 # affichage des trajectoires
@@ -569,13 +572,13 @@ t = np.arange(0, 10000, dt)
 #=============================================================
 # etude de l'energie mécanique
 
-# tracer_energie_double(
-#     t,
-#     r1_eul, r2_eul, v1_eul, v2_eul,
-#     r1_rk4, r2_rk4, v1_rk4, v2_rk4,
-#     r1_verlet, r2_verlet, v1_verlet, v2_verlet,
-#     m1, m2, G
-# )
+tracer_energie_double(
+    t,
+    r1_eul, r2_eul, v1_eul, v2_eul,
+    r1_rk4, r2_rk4, v1_rk4, v2_rk4,
+    r1_verlet, r2_verlet, v1_verlet, v2_verlet,
+    m1, m2, G
+)
 
 # dt_list = [0.2, 0.1, 0.05, 0.025, 0.0125]
 # drift_energie_vs_dt(dt_list, T=300, r_01=r_01, r_02=r_02, v_01=v_01, v_02=v_02, m1=m1, m2=m2, G=G)
@@ -1161,14 +1164,14 @@ def demo_figure_eight(dt=0.005, T=50.0, G=1.0, eps=1e-12, method="verlet"):
     method: méthode d'intégration ("rk4" ou "verlet")
     return:
     t, m, R0, V0, Rs, Vs, E, L
-     - t: temps (array de taille (Tn,))
-     - m: masses des N corps (array de taille (N,))
-     - R0: positions initiales des N corps (array de taille (N,2))
-     - V0: vitesses initiales des N corps (array de taille (N,2))
-     - Rs: positions des N corps à chaque instant t (array de taille (Tn,N,2))
-     - Vs: vitesses des N corps à chaque instant t (array de taille (Tn,N,2))
-     - E: énergie mécanique totale à chaque instant t (array de taille (Tn,))
-     - L: moment cinétique total à chaque instant t (array de taille (Tn,))
+    - t: temps (array de taille (Tn,))
+    - m: masses des N corps (array de taille (N,))
+    - R0: positions initiales des N corps (array de taille (N,2))
+    - V0: vitesses initiales des N corps (array de taille (N,2))
+    - Rs: positions des N corps à chaque instant t (array de taille (Tn,N,2))
+    - Vs: vitesses des N corps à chaque instant t (array de taille (Tn,N,2))
+    - E: énergie mécanique totale à chaque instant t (array de taille (Tn,))
+    - L: moment cinétique total à chaque instant t (array de taille (Tn,))
     """
     m, R0, V0 = scenario_figure_eight(G=G)
     t = np.arange(0.0, T, dt)
@@ -1393,13 +1396,13 @@ def lyapunov_map_figure_eight(
 # )
 # demo_figure_eight(dt=0.005, T=100.0, method="verlet")
 
-lyapunov_map_figure_eight(
-    dx_min=-0.02, dx_max=0.02,
-    dy_min=-0.02, dy_max=0.02,
-    n=61,
-    dt=0.005,
-    T=6.3259*2,
-    method="verlet",
-    use_max_over_time=True,
-    clip_lambda=(0.0, 2.0)
-)
+# lyapunov_map_figure_eight(
+#     dx_min=-0.02, dx_max=0.02,
+#     dy_min=-0.02, dy_max=0.02,
+#     n=61,
+#     dt=0.005,
+#     T=6.3259*2,
+#     method="verlet",
+#     use_max_over_time=True,
+#     clip_lambda=(0.0, 2.0)
+# )
