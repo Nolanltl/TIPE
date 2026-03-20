@@ -417,7 +417,7 @@ def tracer_erreur_vs_dt(dt_min=1e-4, dt_max=1.0, nb_points=6, T=100.0):
     plt.title("Erreur maximale en fonction du pas de temps")
     plt.grid(True, which="both")
     plt.legend()
-    plt.savefig(os.path.join(FIG_DIR, f"erreur_vs_dt_{dt}_T={T[-1]}.png"), bbox_inches="tight")
+    plt.savefig(os.path.join(FIG_DIR, f"erreur_vs_dt_{dt}_T={T}.png"), bbox_inches="tight")
     plt.show()
 
     return dt_list, np.array(erreur_euler), np.array(erreur_rk4), np.array(erreur_verlet)
@@ -601,7 +601,7 @@ t = np.arange(0, 4000, dt)
 # plot_erreur(t, dt)
 
 
-# tracer_erreur_vs_dt(dt_min=1e-5, dt_max=10.0, nb_points=12, T=100.0)
+tracer_erreur_vs_dt(dt_min=1e-1, dt_max=100.0, nb_points=40, T=500.0)
 
 
 # ============================================================
@@ -845,7 +845,6 @@ def barycentre_nbody(Rs, Vs, m):
     return Rcm, Vcm
 
 
-
 # ============================================================
 # Expérience chaos : sensibilité aux conditions initiales
 # ============================================================
@@ -864,8 +863,8 @@ def distance_trajectoires(RsA, RsB):
 # Plots
 # ============================================================
 
-def sensibilite_CI(R0, V0, m, epsilons, T=20.0, dt=0.005, G=1.0, eps=1e-12,
-                   corps_perturbe=0, composante=0):
+
+def sensibilite_CI(R0, V0, m, epsilons, T=20.0, dt=0.005, G=1.0, eps=1e-12, corps_perturbe=0, composante=0):
     """
     Trace la divergence entre une trajectoire de référence et des trajectoires
     légèrement perturbées sur les conditions initiales (sensibilité au chaos).
@@ -906,15 +905,15 @@ def sensibilite_CI(R0, V0, m, epsilons, T=20.0, dt=0.005, G=1.0, eps=1e-12,
         distances[epsilon] = distance_trajectoires(Rs_ref, Rs_pert)
 
     # ── Palette de couleurs ──────────────────────────────────────────────────
-    cmap   = plt.cm.plasma
+    cmap = plt.cm.plasma
     colors = [cmap(i / (len(epsilons) - 1)) for i in range(len(epsilons))]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
     for (epsilon, dist), col in zip(distances.items(), colors):
-        exp    = int(np.round(np.log10(epsilon)))
-        label  = rf"$\varepsilon = 10^{{{exp}}}$"
-        ax1.plot(t, dist,             label=label, color=col)
+        exp = int(np.round(np.log10(epsilon)))
+        label = rf"$\varepsilon = 10^{{{exp}}}$"
+        ax1.plot(t, dist, label=label, color=col)
         ax2.semilogy(t, dist + 1e-16, label=label, color=col)
 
     # ── Panneau gauche : échelle linéaire ────────────────────────────────────
@@ -933,41 +932,69 @@ def sensibilite_CI(R0, V0, m, epsilons, T=20.0, dt=0.005, G=1.0, eps=1e-12,
     ax2.legend()
 
     comp_str = "x" if composante == 0 else "y"
-    plt.suptitle(
-        f"Sensibilité aux conditions initiales — corps {corps_perturbe + 1} "
-        f"(perturbation sur {comp_str})"
-    )
+    plt.suptitle(f"Sensibilité aux conditions initiales — corps {corps_perturbe + 1} " f"(perturbation sur {comp_str})")
     plt.tight_layout()
-    plt.savefig(
-        os.path.join(
-            FIG_DIR,
-            f"sensibilite_CI_corps{corps_perturbe + 1}_{comp_str}_T={T}_dt={dt}.png"
-        ),
-        bbox_inches="tight"
-    )
+    plt.savefig(os.path.join(FIG_DIR, f"sensibilite_CI_corps{corps_perturbe + 1}_{comp_str}_T={T}_dt={dt}.png"), bbox_inches="tight")
     plt.show()
 
     return t, distances
 
-def plot_trajectoires_3corps(Rs, title="Trajectoires 3 corps"):
+
+def plot_trajectoires_3corps(Rs, Vs=None, title="Trajectoires 3 corps"):
     """
     Affiche les trajectoires des 3 corps à partir de Rs (T,N,2).
+    Affiche un point sur la position finale de chaque corps,
+    et le vecteur vitesse final si Vs est fourni.
+
     param :
-        Rs: positions des N corps à chaque instant t (array de taille (T,N,2))
-        title: titre du graphique (str)
-    return:
+        Rs    : positions des N corps à chaque instant t (array de taille (T,N,2))
+        Vs    : vitesses des N corps à chaque instant t (array de taille (T,N,2))
+                si None, les vecteurs vitesse ne sont pas affichés (défaut=None)
+        title : titre du graphique (str)
+
+    return :
         None
     """
+    # palette de couleurs — une par corps
+    colors = ["tab:blue", "tab:orange", "tab:green"]
+
+    N = Rs.shape[1]
+
     plt.figure(figsize=(6, 6))
-    for i in range(Rs.shape[1]):
-        plt.plot(Rs[:, i, 0], Rs[:, i, 1], label=f"Corps {i+1}")
+
+    for i in range(N):
+        col = colors[i % len(colors)]
+
+        # ── Trajectoire ──────────────────────────────────────────────────────
+        plt.plot(Rs[:, i, 0], Rs[:, i, 1], label=f"Corps {i + 1}", color=col)
+
+        # ── Point final ──────────────────────────────────────────────────────
+        xf, yf = Rs[-1, i, 0], Rs[-1, i, 1]
+        plt.plot(xf, yf, marker="o", markersize=10, color=col, markeredgecolor="black", markeredgewidth=1.2, zorder=5)
+
+        # ── Vecteur vitesse final ─────────────────────────────────────────────
+        if Vs is not None:
+            vx, vy = Vs[-1, i, 0], Vs[-1, i, 1]
+            plt.annotate(
+                "",
+                xy=(xf + vx * 0.3, yf + vy * 0.3),  # pointe de la flèche
+                xytext=(xf, yf),  # base = position finale
+                arrowprops=dict(
+                    arrowstyle="-|>",
+                    color=col,
+                    lw=2.0,
+                    mutation_scale=15,
+                ),
+                zorder=6,
+            )
+
     plt.axis("equal")
     plt.grid(True)
     plt.xlabel("x")
     plt.ylabel("y")
     plt.title(title)
-    plt.savefig(os.path.join(FIG_DIR, f"{title.replace(' ', '_')}.png"), bbox_inches="tight")
     plt.legend()
+    plt.savefig(os.path.join(FIG_DIR, f"{title.replace(' ', '_')}.png"), bbox_inches="tight")
     plt.show()
 
 
@@ -1010,7 +1037,6 @@ def plot_invariants(t, E, L, title="Invariants"):
     plt.show()
 
 
-
 def normalize_com(R0, V0, m):
     """Recentre pour avoir Rcm=0 et Vcm=0 au départ (utile pour la figure-eight)
     param :
@@ -1048,6 +1074,71 @@ def scenario_figure_eight(G=1.0):
     return m, R0, V0
 
 
+def scenario_lagrange(d=2.0, G=1.0):
+    """
+    Orbite périodique en triangle équilatéral de Lagrange (1772).
+    3 masses égales aux sommets d'un triangle équilatéral en rotation uniforme
+    autour du barycentre commun.
+
+    param :
+        d : côté du triangle équilatéral (float, défaut=2.0)
+        G : constante gravitationnelle (float, défaut=1.0)
+
+    return : (masses, R0, V0)
+        masses : array (3,)
+        R0     : positions initiales (array (3,2))
+        V0     : vitesses initiales (array (3,2))
+
+    """
+    m = np.array([1.0, 1.0, 1.0], float)
+
+    r = d / np.sqrt(3.0)
+    omega = np.sqrt(G * np.sum(m) / d**3) * d / r
+
+    omega = np.sqrt(3.0 * G * 1.0 / d**3)
+    angles = np.array([np.pi / 2, np.pi / 2 + 2 * np.pi / 3, np.pi / 2 + 4 * np.pi / 3])
+
+    R0 = np.array([[r * np.cos(a), r * np.sin(a)] for a in angles], float)
+
+    V0 = np.array([[-r * omega * np.sin(a), r * omega * np.cos(a)] for a in angles], float)
+
+    R0, V0 = normalize_com(R0, V0, m)
+
+    return m, R0, V0
+
+
+def scenario_euler_collinear(d=2.0, G=1.0):
+    """
+    Orbite périodique colinéaire d'Euler (1767).
+    3 masses égales alignées sur l'axe x, en rotation autour du barycentre.
+    Configuration symétrique : m1 et m3 aux extrémités, m2 au centre.
+
+    param :
+        d : distance entre corps adjacents (float, défaut=2.0)
+            => m1 à -d, m2 à 0, m3 à +d
+        G : constante gravitationnelle (float, défaut=1.0)
+
+    return : (masses, R0, V0)
+        masses : array (3,)
+        R0     : positions initiales (array (3,2))
+        V0     : vitesses initiales (array (3,2))
+
+    Note : cette solution est instable — une perturbation même infinitésimale
+            brise l'alignement. Elle illustre parfaitement la sensibilité aux CI.
+    """
+    m = np.array([1.0, 1.0, 1.0], float)
+
+    R0 = np.array([[-d, 0.0], [0.0, 0.0], [d, 0.0]], float)
+
+    omega = np.sqrt(5.0 * G * 1.0 / (4.0 * d**3))
+
+    V0 = np.array([[0.0, -omega * d], [0.0, 0.0], [0.0, omega * d]], float)
+
+    R0, V0 = normalize_com(R0, V0, m)
+
+    return m, R0, V0
+
+
 def demo_figure_eight(dt=0.005, T=50.0, G=1.0, eps=1e-12, method="verlet"):
     """
     test de la figure-eight : intégration + invariants + plot
@@ -1082,8 +1173,8 @@ def demo_figure_eight(dt=0.005, T=50.0, G=1.0, eps=1e-12, method="verlet"):
     E = energie_nbody(Rs, Vs, m, G=G, eps=eps)
     L = moment_cinetique_nbody(Rs, Vs, m)
 
-    plot_trajectoires_3corps(Rs, title=f"Figure-eight (3 corps) — {name}")
-    plot_invariants(t, E, L, title=f"Invariants — Figure-eight — {name}")
+    plot_trajectoires_3corps(Rs, title=f"Figure en huit (3 corps){name}")
+    # plot_invariants(t, E, L, title=f"Invariants — Figure-eight — {name}")
 
     return t, m, R0, V0, Rs, Vs, E, L
 
@@ -1296,6 +1387,14 @@ def lyapunov_map_figure_eight(
 # )
 # demo_figure_eight(dt=0.005, T=100.0, method="verlet")
 
+# m, R0_col, V0_col = scenario_euler_collinear()
+# m, R0_huit, V0_huit = scenario_figure_eight()
+# m, R0_lag, V0_lag = scenario_lagrange()
+
+# plot_trajectoires_3corps(verlet_integrate_nbody(R0_col, V0_col, m, np.arange(0.0, 20.0, 0.005), dt=0.005)[0], title="Orbite colinéaire d'Euler")
+# plot_trajectoires_3corps(verlet_integrate_nbody(R0_huit, V0_huit, m, np.arange(0.0, 20.0, 0.005), dt=0.005)[0], title="Orbite en huit")
+# plot_trajectoires_3corps(verlet_integrate_nbody(R0_lag, V0_lag, m, np.arange(0.0, 20.0, 0.005), dt=0.005)[0], title="Orbite de Lagrange")
+
 # lyapunov_map_figure_eight(
 #     dx_min=-0.02, dx_max=0.02,
 #     dy_min=-0.02, dy_max=0.02,
@@ -1308,13 +1407,13 @@ def lyapunov_map_figure_eight(
 # )
 
 
-m, R0, V0 = scenario_figure_eight()
+# m, R0, V0 = scenario_figure_eight()
 
-t, distances = sensibilite_CI(
-    R0, V0, m,
-    epsilons       = [1e-3, 1e-5, 1e-7, 1e-9],
-    T              = 25.0,
-    dt             = 0.005,
-    corps_perturbe = 0,
-    composante     = 0   # perturbation sur x du corps 1
-)
+# t, distances = sensibilite_CI(
+#     R0, V0, m,
+#     epsilons       = [1e-3, 1e-5, 1e-7, 1e-9],
+#     T              = 25.0,
+#     dt             = 0.005,
+#     corps_perturbe = 0,
+#     composante     = 0   # perturbation sur x du corps 1
+# )
