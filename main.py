@@ -4,6 +4,13 @@ import matplotlib.pyplot as plt
 import time
 import os
 
+
+# A faire 
+# conservation moment cinetique 
+# Runge lens 
+# Comparer avec Odeint 
+# plus de shema (euler en cas de divergence : spiral )
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIG_DIR = os.path.join(BASE_DIR, "figures")
 os.makedirs(FIG_DIR, exist_ok=True)
@@ -117,6 +124,50 @@ def position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G=1.0):
     r2 = R - (m1 / M) * r_rel
 
     return r1, r2, omega
+
+def vitesse_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G=1.0):
+    """
+    Calcule la vitesse des deux corps à l'instant t via la solution analytique
+    (dérivée temporelle de position_analytique — orbite circulaire).
+
+    param :
+        r_01, r_02 : positions initiales des corps 1 et 2 (array-like)
+        v_01, v_02 : vitesses initiales des corps 1 et 2 (array-like)
+        m1, m2     : masses des deux corps (float)
+        t          : temps (array-like)
+        G          : constante gravitationnelle (float, défaut=1.0)
+    return :
+        v1, v2 : vitesses des deux corps à chaque instant t (arrays Nx2)
+    """
+    r_01 = np.asarray(r_01, float)
+    r_02 = np.asarray(r_02, float)
+    v_01 = np.asarray(v_01, float)
+    v_02 = np.asarray(v_02, float)
+    t    = np.asarray(t)
+
+    M  = m1 + m2
+    V0 = (m1 * v_01 + m2 * v_02) / M   # vitesse du centre de masse (constante)
+
+    r0 = r_01 - r_02
+    r  = np.linalg.norm(r0)
+
+    omega = np.sqrt(G * M / r**3)       # pulsation de l'orbite circulaire
+
+    u_r  = r0 / r
+    u_th = np.array([-u_r[1], u_r[0]])  # vecteur tangentiel (90° dans le sens trigo)
+
+    # dérivée de r_rel(t) = r*(cos(ωt) u_r + sin(ωt) u_th)
+    # v_rel(t) = r*ω*(-sin(ωt) u_r + cos(ωt) u_th)
+    sinwt = np.sin(omega * t)
+    coswt = np.cos(omega * t)
+
+    v_rel = r * omega * (-sinwt[:, None] * u_r + coswt[:, None] * u_th)
+
+    # vitesses individuelles = vitesse du CDM + contribution du mouvement relatif
+    v1 = V0 + (m2 / M) * v_rel
+    v2 = V0 - (m1 / M) * v_rel
+
+    return v1, v2
 
 
 def acceleration(r1, r2, m1, m2, G=1.0):
@@ -549,9 +600,53 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0, metho
     return np.array(drift_rk4), np.array(drift_ver)
 
 
-# ============================================================
-# Tester la conservation du moment cinétique (doit rester constant pour une orbite circulaire)
-# ============================================================
+def moment_cinetique(r1, r2, v1, v2, m1, m2):
+    """
+    Calcule le moment cinetique total du systeme a deux corps
+    en 2D, a chaque instant.
+
+    param :
+        r1, r2 : positions des deux corps (Nx2)
+        v1, v2 : vitesses des deux corps (Nx2)
+        m1, m2 : masses
+
+    return :
+        Lz : moment cinetique total selon l'axe z (array de taille N)
+    """
+    r1 = np.asarray(r1, float)
+    r2 = np.asarray(r2, float)
+    v1 = np.asarray(v1, float)
+    v2 = np.asarray(v2, float)
+
+    L1 = m1 * (r1[:, 0] * v1[:, 1] - r1[:, 1] * v1[:, 0])
+    L2 = m2 * (r2[:, 0] * v2[:, 1] - r2[:, 1] * v2[:, 0])
+    return L1 + L2
+
+
+def tracer_moment_cinetique(t, L_rk4, L_ver, L_ana):
+    """
+    Trace le moment cinetique total en fonction du temps pour RK4 et Verlet.
+    param :
+        t: temps (array-like)
+        L_rk4: moment cinetique total pour RK4 (array-like)
+        L_ver: moment cinetique total pour Verlet (array-like)
+        L_ana: moment cinetique total pour la solution analytique (array-like)
+    return:
+        None
+    """
+    plt.figure(figsize=(8, 6))
+    L_rk4_norm = abs(L_rk4 - L_ana) / abs(L_ana[0])
+    L_ver_norm = abs(L_ver - L_ana) / abs(L_ana[0])
+    plt.plot(t, L_rk4_norm, label="RK4", color=couleur.get("RK4", "tab:orange"))
+    plt.plot(t, L_ver_norm, label="Verlet", color=couleur.get("Verlet", "tab:green"))
+    plt.xlabel("Temps")
+    plt.ylabel("Moment cinétique total Lz")
+    plt.title("Moment cinétique total en fonction du temps")
+    plt.grid(True)
+    plt.legend()
+    plt.savefig(os.path.join(FIG_DIR, "moment_cinetique_vs_t.png"), bbox_inches="tight")
+    plt.show()
+
 
 
 # ============================================================
@@ -570,14 +665,17 @@ t = np.arange(0, 4000, dt)
 
 # =============================================================
 # calcule des positions et vitesses avec les différentes méthodes
+# =============================================================
 
-# r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
-# r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-# r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-# r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
+v1_ana, v2_ana = vitesse_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
+r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
 
 # =============================================================
 # affichage des trajectoires
+# =============================================================
 
 # affiche_positions(t, r1_ana, r2_ana, label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
 # affiche_positions(t, r1_eul, r2_eul,label1=f'Corps 1 (Euler)(m = {m1})',label2=f"Corps 2 (Euler)(m = {m2})")
@@ -587,6 +685,7 @@ t = np.arange(0, 4000, dt)
 
 # =============================================================
 # etude de l'energie mécanique
+# =============================================================
 
 # tracer_energie_double(t,dt, m1, m2, G)
 
@@ -596,13 +695,20 @@ t = np.arange(0, 4000, dt)
 
 # =============================================================
 # affichage de l'erreur
+# =============================================================
 
 
 # plot_erreur(t, dt)
+# tracer_erreur_vs_dt(dt_min=1e-1, dt_max=100.0, nb_points=40, T=500.0)
 
+# =============================================================
+# etude du moment cinetique 
+# =============================================================
 
-tracer_erreur_vs_dt(dt_min=1e-1, dt_max=100.0, nb_points=40, T=500.0)
-
+L_rk4 = moment_cinetique(r1_rk4, r2_rk4, v1_rk4, v2_rk4, m1, m2)
+L_ver = moment_cinetique(r1_verlet, r2_verlet, v1_verlet, v2_verlet, m1, m2)
+L_ana = moment_cinetique(r1_ana, r2_ana, v1_ana, v2_ana, m1, m2)
+tracer_moment_cinetique(t, L_rk4, L_ver, L_ana)
 
 # ============================================================
 # Partie 2 : N-corps
@@ -1068,8 +1174,6 @@ def scenario_figure_eight(G=1.0):
     R0 = np.array([[0.97000436, -0.24308753], [-0.97000436, 0.24308753], [0.0, 0.0]], float)
 
     V0 = np.array([[0.466203685, 0.43236573], [0.466203685, 0.43236573], [-0.93240737, -0.86473146]], float)
-
-    # sécurité : COM exactement au repos
     R0, V0 = normalize_com(R0, V0, m)
     return m, R0, V0
 
