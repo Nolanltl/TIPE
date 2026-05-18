@@ -1,6 +1,7 @@
 import numpy as np
 import math as mt
 import matplotlib.pyplot as plt
+from scipy.integrate import odeint
 import time
 import os
 
@@ -357,6 +358,36 @@ def verlet_integrate(r1_0, r2_0, v1_0, v2_0, m1, m2, t, dt, G=1.0):
     return r1, r2, v1, v2
 
 
+def odeint_integrate(r1_0, r2_0, v1_0, v2_0, m1, m2, t, G=1.0):
+    """
+    Intègre les équations du mouvement de deux corps en utilisant la fonction odeint de SciPy.
+    param :
+        r1_0: position initiale du corps 1 (array-like)
+        r2_0: position initiale du corps 2 (array-like)
+        v1_0: vitesse initiale du corps 1 (array-like)
+        v2_0: vitesse initiale du corps 2 (array-like)
+        m1: masse du corps 1 (float)
+        m2: masse du corps 2 (float)
+        t: temps (array-like)
+        G: constante gravitationnelle (float, défaut=1.0)
+    return:
+        r1, r2: positions des deux corps à chaque instant t (arrays numpy)
+        v1, v2: vitesses des deux corps à chaque instant t (arrays numpy)
+    """
+
+    def deriv(state, t):
+        r1, v1, r2, v2 = state.reshape(4, 2)
+        a1, a2 = acceleration(r1, r2, m1, m2, G)
+        return np.concatenate((v1, a1, v2, a2))
+
+    state0 = np.concatenate((r1_0, v1_0, r2_0, v2_0))
+    sol = odeint(deriv, state0, t)
+    r1 = sol[:, :2]
+    v1 = sol[:, 2:4]
+    r2 = sol[:, 4:6]
+    v2 = sol[:, 6:]
+    return r1, r2, v1, v2
+
 def affiche_positions(t, r1, r2, methode, label1="Corps 1", label2="Corps 2"):
     """
     Affiche les trajectoires des deux corps.
@@ -623,11 +654,12 @@ def moment_cinetique(r1, r2, v1, v2, m1, m2):
     return L1 + L2
 
 
-def tracer_moment_cinetique(t, L_rk4, L_ver, L_ana):
+def tracer_moment_cinetique_double(t, L_eul, L_rk4, L_ver, L_ana):
     """
     Trace le moment cinetique total en fonction du temps pour RK4 et Verlet.
     param :
         t: temps (array-like)
+        L_eul: moment cinetique total pour Euler (array-like)
         L_rk4: moment cinetique total pour RK4 (array-like)
         L_ver: moment cinetique total pour Verlet (array-like)
         L_ana: moment cinetique total pour la solution analytique (array-like)
@@ -635,18 +667,36 @@ def tracer_moment_cinetique(t, L_rk4, L_ver, L_ana):
         None
     """
     plt.figure(figsize=(8, 6))
-    L_rk4_norm = abs(L_rk4 - L_ana) / abs(L_ana[0])
-    L_ver_norm = abs(L_ver - L_ana) / abs(L_ana[0])
-    plt.plot(t, L_rk4_norm, label="RK4", color=couleur.get("RK4", "tab:orange"))
-    plt.plot(t, L_ver_norm, label="Verlet", color=couleur.get("Verlet", "tab:green"))
-    plt.xlabel("Temps")
-    plt.ylabel("Moment cinétique total Lz")
-    plt.title("Moment cinétique total en fonction du temps")
-    plt.grid(True)
-    plt.legend()
-    plt.savefig(os.path.join(FIG_DIR, "moment_cinetique_vs_t.png"), bbox_inches="tight")
-    plt.show()
+    denom = abs(L_ana[0]) if abs(L_ana[0]) > 0 else 1.0
+    L_eul_norm = np.abs(L_eul - L_ana) / denom
+    L_rk4_norm = np.abs(L_rk4 - L_ana) / denom
+    L_ver_norm = np.abs(L_ver - L_ana) / denom
 
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    ax1.plot(t, L_eul_norm, label="Euler", color=couleur.get("Euler", "tab:blue"))
+    ax1.plot(t, L_rk4_norm, label="RK4", color=couleur.get("RK4", "tab:orange"))
+    ax1.plot(t, L_ver_norm, label="Verlet", color=couleur.get("Verlet", "tab:green"))
+    ax1.set_title("Dérive du moment cinétique (toutes méthodes)")
+    ax1.set_xlabel("Temps")
+    ax1.set_ylabel(r"$(L - L_0)/|L_0|$")
+    ax1.grid(True)
+    ax1.legend()
+
+    ax2.plot(t, L_rk4_norm, label="RK4", color=couleur.get("RK4", "tab:orange"))
+    ax2.plot(t, L_ver_norm, label="Verlet", color=couleur.get("Verlet", "tab:green"))
+    ax2.set_title("Zoom : RK4 vs Verlet")
+    ax2.set_xlabel("Temps")
+    ax2.grid(True)
+    ax2.legend()
+
+    for ax in (ax1, ax2):
+        ax.ticklabel_format(style="plain", axis="y", useOffset=False)
+
+    Tfinal = t[-1] if hasattr(t, "__len__") and len(t) > 0 else 0
+    plt.savefig(os.path.join(FIG_DIR, f"conservation_moment_T={Tfinal}.png"), bbox_inches="tight")
+    plt.show()
+    
 
 
 # ============================================================
@@ -660,7 +710,7 @@ r_01 = (1.0, 0.0)
 r_02 = (-1.0, 0.0)
 v_01, v_02 = vitesses_circulaires(r_01, r_02, m1, m2, G, sens=+1)
 
-dt = 0.1
+dt = 0.1    
 t = np.arange(0, 4000, dt)
 
 # =============================================================
@@ -704,11 +754,11 @@ r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, 
 # =============================================================
 # etude du moment cinetique 
 # =============================================================
-
+L_eul = moment_cinetique(r1_eul, r2_eul, v1_eul, v2_eul, m1, m2)
 L_rk4 = moment_cinetique(r1_rk4, r2_rk4, v1_rk4, v2_rk4, m1, m2)
 L_ver = moment_cinetique(r1_verlet, r2_verlet, v1_verlet, v2_verlet, m1, m2)
 L_ana = moment_cinetique(r1_ana, r2_ana, v1_ana, v2_ana, m1, m2)
-tracer_moment_cinetique(t, L_rk4, L_ver, L_ana)
+tracer_moment_cinetique_double(t, L_eul, L_rk4, L_ver, L_ana)
 
 # ============================================================
 # Partie 2 : N-corps
