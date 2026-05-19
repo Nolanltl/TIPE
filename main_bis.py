@@ -12,7 +12,7 @@ import os
 # plus de shema (euler en cas de divergence : spiral )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FIG_DIR = os.path.join(BASE_DIR, "figures")
+FIG_DIR = os.path.join(BASE_DIR, "figures_bis")
 os.makedirs(FIG_DIR, exist_ok=True)
 
 parameters = {
@@ -26,7 +26,7 @@ parameters = {
 }
 plt.rcParams.update(parameters)
 
-couleur = {"Verlet ": "green", "RK4": "orange", "Euler": "blue", "Analytique": "gray"}
+couleur = {"Verlet": "green", "RK4": "orange", "Euler": "blue", "Odeint": "red", "Analytique": "gray"}
 
 # Variables globales
 G = 1.0  # constante gravitationnelle (unités arbitraires)
@@ -429,14 +429,18 @@ def plot_erreur(t, dt):
     r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
     r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
     r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+    r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2, t, G)
+
     err_eul = np.linalg.norm(r1_eul - r1_ana, axis=1)
     err_rk4 = np.linalg.norm(r1_rk4 - r1_ana, axis=1)
     err_verlet = np.linalg.norm(r1_verlet - r1_ana, axis=1)
+    err_ode = np.linalg.norm(r1_ode - r1_ana, axis=1)
 
     plt.figure()
-    plt.plot(t, err_eul, label=f"Erreur Corps 1 (Euler)", color=couleur.get("Euler", "tab:blue"))
-    plt.plot(t, err_rk4, label=f"Erreur Corps 2 (RK4)", color=couleur.get("RK4", "tab:orange"))
-    plt.plot(t, err_verlet, label=f"Erreur Corps 3 (Verlet)", color=couleur.get("Verlet", "tab:green"))
+    plt.plot(t, err_eul, label="Erreur Corps 1 (Euler)", color=couleur.get("Euler", "tab:blue"))
+    plt.plot(t, err_rk4, label="Erreur Corps 2 (RK4)", color=couleur.get("RK4", "tab:orange"))
+    plt.plot(t, err_verlet, label="Erreur Corps 3 (Verlet)", color=couleur.get("Verlet", "tab:green"))
+    plt.plot(t, err_ode, label="Erreur Corps 4 (Odeint)", color=couleur.get("Odeint", "tab:red"))
 
     plt.xlabel("Temps")
     plt.ylabel("Erreur (distance)")
@@ -468,6 +472,7 @@ def tracer_erreur_vs_dt(dt_min=1e-4, dt_max=1.0, nb_points=6, T=100.0):
     erreur_euler = []
     erreur_rk4 = []
     erreur_verlet = []
+    erreur_odeint = []
 
     for d in dt_list:
         t = np.arange(0.0, T, d)
@@ -490,20 +495,26 @@ def tracer_erreur_vs_dt(dt_min=1e-4, dt_max=1.0, nb_points=6, T=100.0):
         err_ver = np.max(np.linalg.norm(r1_ver - r1_ana, axis=1))
         erreur_verlet.append(err_ver)
 
+        # Odeint
+        r1_ode, r2_ode, *_ = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2, t, G)
+        err_ode = np.max(np.linalg.norm(r1_ode - r1_ana, axis=1))
+        erreur_odeint.append(err_ode)
+
     # Tracé
     plt.figure(figsize=(8, 6))
     plt.loglog(dt_list, erreur_euler, marker="o", label="Euler")
     plt.loglog(dt_list, erreur_rk4, marker="o", label="RK4")
     plt.loglog(dt_list, erreur_verlet, marker="o", label="Verlet")
+    plt.loglog(dt_list, erreur_odeint, marker="o", label="Odeint")
     plt.xlabel("Pas de temps dt")
     plt.ylabel("Erreur maximale")
     plt.title("Erreur maximale en fonction du pas de temps")
     plt.grid(True, which="both")
     plt.legend()
-    plt.savefig(os.path.join(FIG_DIR, f"erreur_vs_dt_{dt}_T={T}.png"), bbox_inches="tight")
+    plt.savefig(os.path.join(FIG_DIR, f"erreur_vs_dt_T={T}.png"), bbox_inches="tight")
     plt.show()
 
-    return dt_list, np.array(erreur_euler), np.array(erreur_rk4), np.array(erreur_verlet)
+    return dt_list, np.array(erreur_euler), np.array(erreur_rk4), np.array(erreur_verlet), np.array(erreur_odeint)
 
 
 def energie_mecanique(r1, r2, v1, v2, m1, m2, G=1.0):
@@ -550,20 +561,24 @@ def tracer_energie_double(T, dt, m1, m2, G=1.0):
         E0 = E[0]
         return (E - E0) / abs(E0)
 
+    t = np.arange(0.0, T, dt)
     r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
     r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
     r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
     r1_ver, r2_ver, v1_ver, v2_ver = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+    r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2, t, G)
 
     y_eul = dE_rel(r1_eul, r2_eul, v1_eul, v2_eul)
     y_rk4 = dE_rel(r1_rk4, r2_rk4, v1_rk4, v2_rk4)
     y_ver = dE_rel(r1_ver, r2_ver, v1_ver, v2_ver)
+    y_ode = dE_rel(r1_ode, r2_ode, v1_ode, v2_ode)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
     ax1.plot(t, y_eul, label="Euler", color=couleur.get("Euler", "tab:blue"))
     ax1.plot(t, y_rk4, label="RK4", color=couleur.get("RK4", "tab:orange"))
     ax1.plot(t, y_ver, label="Verlet", color=couleur.get("Verlet", "tab:green"))
+    ax1.plot(t, y_ode, label="Odeint", color=couleur.get("Odeint", "tab:red"))
     ax1.set_title("Dérive de l'énergie (toutes méthodes)")
     ax1.set_xlabel("Temps")
     ax1.set_ylabel(r"$(E - E_0)/|E_0|$")
@@ -572,7 +587,8 @@ def tracer_energie_double(T, dt, m1, m2, G=1.0):
 
     ax2.plot(t, y_rk4, label="RK4", color=couleur.get("RK4", "tab:orange"))
     ax2.plot(t, y_ver, label="Verlet", color=couleur.get("Verlet", "tab:green"))
-    ax2.set_title("Zoom : RK4 vs Verlet")
+    ax2.plot(t, y_ode, label="Odeint", color=couleur.get("Odeint", "tab:red"))
+    ax2.set_title("Zoom : RK4 vs Verlet vs Odeint")
     ax2.set_xlabel("Temps")
     ax2.grid(True)
     ax2.legend()
@@ -602,25 +618,31 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0, metho
     """
     drift_rk4 = []
     drift_ver = []
+    drift_ode = []
 
     for dt in dt_list:
         t = np.arange(0, T, dt)
 
         r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
         r1_ver, r2_ver, v1_ver, v2_ver = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+        r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2, t, G)
 
         E_rk4 = energie_mecanique(r1_rk4, r2_rk4, v1_rk4, v2_rk4, m1, m2, G)
         E_ver = energie_mecanique(r1_ver, r2_ver, v1_ver, v2_ver, m1, m2, G)
+        E_ode = energie_mecanique(r1_ode, r2_ode, v1_ode, v2_ode, m1, m2, G)
 
         y_rk4 = (E_rk4 - E_rk4[0]) / abs(E_rk4[0])
         y_ver = (E_ver - E_ver[0]) / abs(E_ver[0])
+        y_ode = (E_ode - E_ode[0]) / abs(E_ode[0])
 
         drift_rk4.append(np.max(np.abs(y_rk4)))
         drift_ver.append(np.max(np.abs(y_ver)))
+        drift_ode.append(np.max(np.abs(y_ode)))
 
     plt.figure(figsize=(8, 6))
     plt.loglog(dt_list, drift_rk4, marker="o", label="RK4", color=couleur.get("RK4", "tab:orange"))
     plt.loglog(dt_list, drift_ver, marker="o", label="Verlet", color=couleur.get("Verlet", "tab:green"))
+    plt.loglog(dt_list, drift_ode, marker="o", label="Odeint", color=couleur.get("Odeint", "tab:red"))
     plt.xlabel("dt")
     plt.ylabel(r"max |(E - E0)/|E0||")
     plt.title("Dérive max d'énergie en fonction de dt")
@@ -629,7 +651,7 @@ def drift_energie_vs_dt(dt_list, T, r_01, r_02, v_01, v_02, m1, m2, G=1.0, metho
     plt.legend()
     plt.show()
 
-    return np.array(drift_rk4), np.array(drift_ver)
+    return np.array(drift_rk4), np.array(drift_ver), np.array(drift_ode)
 
 
 def moment_cinetique(r1, r2, v1, v2, m1, m2):
@@ -773,7 +795,6 @@ def tracer_runge_lenz(t, A_eul, A_rk4, A_ver, A_ana):
     Tfinal = t[-1] if hasattr(t, "__len__") and len(t) > 0 else 0
     plt.savefig(os.path.join(FIG_DIR, f"conservation_runge_lenz_T={Tfinal}.png"), bbox_inches="tight")
     plt.show()
-
 
 
 
