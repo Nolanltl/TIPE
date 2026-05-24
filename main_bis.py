@@ -678,7 +678,7 @@ def moment_cinetique(r1, r2, v1, v2, m1, m2):
     return L1 + L2
 
 
-def tracer_moment_cinetique_double(t, L_eul, L_rk4, L_ver, L_ana,L_ode):
+def tracer_moment_cinetique_double(t, L_eul, L_rk4, L_ver, L_ana, L_ode):
     """
     Trace le moment cinetique pour les différentes méthodes d'intégration.
     param :
@@ -789,7 +789,7 @@ def tracer_runge_lenz(t, A_eul, A_rk4, A_ver, A_ana, A_ode):
     ax1.legend()
 
     ax2.plot(t, A_rk4_norm, label="RK4", color=couleur.get("RK4", "tab:orange"))
-    ax2.plot(t, A_ver_norm, label="Verlet", color=couleur.get("Verlet", "tab:green"))
+    # ax2.plot(t, A_ver_norm, label="Verlet", color=couleur.get("Verlet", "tab:green"))
     ax2.plot(t, A_ode_norm, label="Odeint", color=couleur.get("Odeint", "tab:red"))
     ax2.set_title("Zoom : RK4 vs Verlet")
     ax2.set_xlabel("Temps")
@@ -804,7 +804,6 @@ def tracer_runge_lenz(t, A_eul, A_rk4, A_ver, A_ana, A_ode):
     plt.show()
 
 
-
 # ============================================================
 # Testes 2-corps
 # ============================================================
@@ -817,7 +816,7 @@ r_02 = (-1.0, 0.0)
 v_01, v_02 = vitesses_circulaires(r_01, r_02, m1, m2, G, sens=+1)
 
 dt = 0.1
-t = np.arange(0, 4000, dt)
+t = np.arange(0, 40000, dt)
 
 # =============================================================
 # calcule des positions et vitesses avec les différentes méthodes
@@ -853,7 +852,7 @@ r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2
 # etude de l'energie mécanique
 # =============================================================
 
-tracer_energie_double(1000,dt, m1, m2, G)
+# tracer_energie_double(40000,dt, m1, m2, G)
 
 # dt_list = [0.2, 0.1, 0.05, 0.025, 0.0125]
 # drift_energie_vs_dt(dt_list, T=300, r_01=r_01, r_02=r_02, v_01=v_01, v_02=v_02, m1=m1, m2=m2, G=G)
@@ -868,7 +867,7 @@ tracer_energie_double(1000,dt, m1, m2, G)
 # L_ver = moment_cinetique(r1_verlet, r2_verlet, v1_verlet, v2_verlet, m1, m2)
 # L_ana = moment_cinetique(r1_ana, r2_ana, v1_ana, v2_ana, m1, m2)
 # L_ode = moment_cinetique(r1_ode, r2_ode, v1_ode, v2_ode, m1, m2)
-# tracer_moment_cinetique_double(t, L_eul, L_rk4, L_ver, L_ana, L_ode)
+# tracer_moment_c_inetique_double(t, L_eul, L_rk4, L_ver, L_ana, L_ode)
 
 # =============================================================
 # etude du vecteur de Runge-Lenz
@@ -880,3 +879,369 @@ tracer_energie_double(1000,dt, m1, m2, G)
 # A_ana = runge_lenz_vecteur(r1_ana, r2_ana, v1_ana, v2_ana, m1, m2, G)
 # A_ode = runge_lenz_vecteur(r1_ode, r2_ode, v1_ode, v2_ode, m1, m2, G)
 # tracer_runge_lenz(t, A_eul, A_rk4, A_ver, A_ana, A_ode)
+
+
+# ============================================================
+# Partie 2 : N-corps
+# ============================================================
+
+# ============================================================
+# 1) Accélération N-corps (2D)
+# ============================================================
+
+
+def accelerations_nbody(R, m, G=1.0, eps=1e-12):
+    """
+    Calcule les accélérations gravitationnelles pour N corps en 2D.
+    param :
+        R : positions des N corps (array de taille (N,2))
+        m : masses des N corps (array de taille (N,))
+        G : constante gravitationnelle (float, défaut=1.0)
+        eps : régularisation pour éviter les singularités (float, défaut=1e-12)
+    return :
+        A : accélérations des N corps (array de taille (N,2))
+    """
+    R = np.asarray(R, float)
+    m = np.asarray(m, float)
+    N = R.shape[0]
+
+    A = np.zeros_like(R)
+
+    for i in range(N):
+        ai = np.zeros(2)
+        for j in range(N):
+            if i == j:
+                continue
+            rij = R[j] - R[i]
+            dist2 = rij[0] * rij[0] + rij[1] * rij[1] + eps
+            dist3 = dist2 * np.sqrt(dist2)
+            ai += G * m[j] * rij / dist3
+        A[i] = ai
+
+    return A
+
+
+# ============================================================
+#  Intégrateurs N-corps : RK4 et Verlet
+# ============================================================
+
+
+def rk4_step_nbody(R, V, m, dt, G=1.0, eps=1e-12):
+    """
+    Effectue un pas d'intégration en utilisant la méthode de Runge-Kutta d'ordre 4 (RK4) pour N corps en interaction gravitationnelle.
+    param :
+        R: positions actuelles des N corps (array de taille (N,2))
+        V: vitesses actuelles des N corps (array de taille (N,2))
+        m: masses des N corps (array de taille (N,))
+        dt: pas de temps (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+
+    return:
+        Rn, Vn: nouvelles positions et vitesses des N corps après le pas de temps dt (arrays de taille (N,2))
+
+    """
+    R = np.asarray(R, float)
+    V = np.asarray(V, float)
+    m = np.asarray(m, float)
+
+    def deriv(Rx, Vx):
+        Ax = accelerations_nbody(Rx, m, G=G, eps=eps)
+        return Vx, Ax
+
+    k1_R, k1_V = deriv(R, V)
+    k2_R, k2_V = deriv(R + 0.5 * dt * k1_R, V + 0.5 * dt * k1_V)
+    k3_R, k3_V = deriv(R + 0.5 * dt * k2_R, V + 0.5 * dt * k2_V)
+    k4_R, k4_V = deriv(R + dt * k3_R, V + dt * k3_V)
+
+    Rn = R + (dt / 6.0) * (k1_R + 2 * k2_R + 2 * k3_R + k4_R)
+    Vn = V + (dt / 6.0) * (k1_V + 2 * k2_V + 2 * k3_V + k4_V)
+    return Rn, Vn
+
+
+def rk4_integrate_nbody(R0, V0, m, t, dt, G=1.0, eps=1e-12):
+    """
+    Intègre les équations du mouvement de N corps en utilisant la méthode de Runge-Kutta d'ordre 4 (RK4).
+    param :
+        R0: positions initiales des N corps (array de taille (N,2))
+        V0: vitesses initiales des N corps (array de taille (N,2))
+        m: masses des N corps (array de taille (N,))
+        t: temps (array-like)
+        dt: pas de temps (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    return:
+        Rs: positions des N corps à chaque instant t (array de taille (T,N,2))
+        Vs: vitesses des N corps à chaque instant t (array de taille (T
+    """
+    t = np.asarray(t, float)
+    Tn = len(t)
+    R0 = np.asarray(R0, float)
+    V0 = np.asarray(V0, float)
+    m = np.asarray(m, float)
+
+    N = R0.shape[0]
+    Rs = np.zeros((Tn, N, 2))
+    Vs = np.zeros((Tn, N, 2))
+    Rs[0] = R0
+    Vs[0] = V0
+
+    for k in range(1, Tn):
+        Rs[k], Vs[k] = rk4_step_nbody(Rs[k - 1], Vs[k - 1], m, dt, G=G, eps=eps)
+
+    return Rs, Vs
+
+
+def verlet_step_nbody(R, V, m, dt, G=1.0, eps=1e-12):
+    """
+    Effectue un pas d'intégration en utilisant la méthode de Verlet pour N corps en interaction gravitationnelle.
+    param :
+        R: positions actuelles des N corps (array de taille (N,2))
+        V: vitesses actuelles des N corps (array de taille (N,2))
+        m: masses des N corps (array de taille (N,))
+        dt: pas de temps (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    return:
+        Rn, Vn: nouvelles positions et vitesses des N corps après le pas de temps dt (arrays de taille (N,2))
+    """
+    R = np.asarray(R, float)
+    V = np.asarray(V, float)
+    m = np.asarray(m, float)
+
+    A = accelerations_nbody(R, m, G=G, eps=eps)
+    Rn = R + V * dt + 0.5 * A * (dt**2)
+    An = accelerations_nbody(Rn, m, G=G, eps=eps)
+    Vn = V + 0.5 * (A + An) * dt
+    return Rn, Vn
+
+
+def verlet_integrate_nbody(R0, V0, m, t, dt, G=1.0, eps=1e-12):
+    """
+    Intègre les équations du mouvement de N corps en utilisant la méthode de Verlet.
+    param :
+        R0: positions initiales des N corps (array de taille (N,2))
+        V0: vitesses initiales des N corps (array de taille (N,2))
+        m: masses des N corps (array de taille (N,))
+        t: temps (array-like)
+        dt: pas de temps (float)
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    return:
+        Rs: positions des N corps à chaque instant t (array de taille (T,N,2))
+        Vs: vitesses des N corps à chaque instant t (array de taille (T,N,2))
+    """
+    t = np.asarray(t, float)
+    Tn = len(t)
+    R0 = np.asarray(R0, float)
+    V0 = np.asarray(V0, float)
+    m = np.asarray(m, float)
+
+    N = R0.shape[0]
+    Rs = np.zeros((Tn, N, 2))
+    Vs = np.zeros((Tn, N, 2))
+    Rs[0] = R0
+    Vs[0] = V0
+
+    for k in range(1, Tn):
+        Rs[k], Vs[k] = verlet_step_nbody(Rs[k - 1], Vs[k - 1], m, dt, G=G, eps=eps)
+
+    return Rs, Vs
+
+
+# ============================================================
+# Invariants
+# ============================================================
+
+
+def energie_nbody(Rs, Vs, m, G=1.0, eps=1e-12):
+    """
+    Calcule l'énergie mécanique totale du système à N corps à chaque instant.
+    param :
+        Rs: positions des N corps à chaque instant t (array de taille (T,N,2))
+        Vs: vitesses des N corps à chaque instant t (array de taille (T ,N,2))
+        m: masses des N corps (array de taille (N,))
+        G: constante gravitationnelle (float, défaut=1.0)
+        eps: régularisation pour éviter les singularités (float, défaut=1e-12)
+    return:
+        E: énergie mécanique totale à chaque instant t (array de taille (T,))
+    """
+    Rs = np.asarray(Rs, float)
+    Vs = np.asarray(Vs, float)
+    m = np.asarray(m, float)
+
+    Tn, N, _ = Rs.shape
+
+    # cinétique
+    Ec = 0.5 * np.sum(m[None, :] * np.sum(Vs**2, axis=2), axis=1)
+
+    # potentielle
+    Ep = np.zeros(Tn)
+    for i in range(N):
+        for j in range(i + 1, N):
+            rij = np.linalg.norm(Rs[:, j, :] - Rs[:, i, :], axis=1) + eps
+            Ep += -G * m[i] * m[j] / rij
+
+    return Ec + Ep
+
+
+# ============================================================
+# à faire seulment si fait en 2 corps : vérifier la conservation du moment cinétique (doit rester constant pour une orbite circulaire)
+# ============================================================
+
+
+def moment_cinetique_nbody(Rs, Vs, m):
+    """
+    Moment cinétique total (scalaire Lz) en 2D : sum m (x vy - y vx)
+    return array de taille T
+    """
+    Rs = np.asarray(Rs, float)
+    Vs = np.asarray(Vs, float)
+    m = np.asarray(m, float)
+
+    x = Rs[:, :, 0]
+    y = Rs[:, :, 1]
+    vx = Vs[:, :, 0]
+    vy = Vs[:, :, 1]
+
+    Lz = np.sum(m[None, :] * (x * vy - y * vx), axis=1)
+    return Lz
+
+
+# ============================================================
+# Affichage de la trajectoire du problème à 3 corps
+# ============================================================
+
+
+def affiche_trajectoires_planetes(Rs, title="Trajectoires des 3 planètes"):
+    """
+    Affiche la trajectoire des planètes.
+
+    param :
+        Rs : positions des planètes au cours du temps
+        title : titre du graphique
+
+    return :
+        None
+    """
+
+    Rs = np.asarray(Rs, float)
+
+    nb_planetes = Rs.shape[1]
+
+    couleurs = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple"]
+
+    plt.figure(figsize=(8, 8))
+
+    for i in range(nb_planetes):
+        couleur_i = couleurs[i % len(couleurs)]
+
+        # Trajectoire complète de la planète i
+        plt.plot(Rs[:, i, 0], Rs[:, i, 1], color=couleur_i, label=f"Planète {i + 1}")
+
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title(title)
+    plt.axis("equal")
+    plt.legend()
+    plt.savefig(os.path.join(FIG_DIR, f"{title.replace(' ', '_')}.png"), bbox_inches="tight")
+    plt.show()
+
+
+def affiche_comparaison_trajectoires(Rs_normal, Rs_modifie, title="Comparaison des trajectoires"):
+    """
+    Affiche sur le même graphique :
+    - les trajectoires normales
+    - les trajectoires après une petite modification de position initiale
+
+    Les ronds indiquent les positions initiales.
+    Les croix indiquent les positions finales.
+    """
+
+    Rs_normal = np.asarray(Rs_normal, float)
+    Rs_modifie = np.asarray(Rs_modifie, float)
+
+    nb_corps = Rs_normal.shape[1]
+    couleurs = ["tab:blue", "tab:orange", "tab:green"]
+
+    plt.figure(figsize=(8, 8))
+
+    for i in range(nb_corps):
+        couleur_i = couleurs[i % len(couleurs)]
+
+        # Trajectoire normale
+        plt.plot(Rs_normal[:, i, 0], Rs_normal[:, i, 1], color=couleur_i, linewidth=2, label=f"Corps {i + 1} normal")
+
+        # Trajectoire modifiée
+        plt.plot(Rs_modifie[:, i, 0], Rs_modifie[:, i, 1], color=couleur_i, linestyle="--", linewidth=2, label=f"Corps {i + 1} modifié")
+
+        # Position initiale normale
+        plt.scatter(Rs_normal[0, i, 0], Rs_normal[0, i, 1], color=couleur_i, marker="o", s=90, edgecolor="black", zorder=5)
+
+        # Position initiale modifiée
+        plt.scatter(Rs_modifie[0, i, 0], Rs_modifie[0, i, 1], facecolors="none", edgecolors=couleur_i, marker="o", s=130, linewidths=2, zorder=6)
+
+        # Position finale normale
+        plt.scatter(Rs_normal[-1, i, 0], Rs_normal[-1, i, 1], color=couleur_i, marker="X", s=100, edgecolor="black", zorder=7)
+
+        # Position finale modifiée
+        plt.scatter(Rs_modifie[-1, i, 0], Rs_modifie[-1, i, 1], color=couleur_i, marker="P", s=100, edgecolor="black", zorder=8)
+
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title(title)
+
+    plt.axis("equal")
+    plt.grid(True)
+
+    # Pour mieux voir la zone intéressante
+    plt.xlim(-2.2, 2.2)
+    plt.ylim(-2.2, 2.2)
+
+    plt.legend(fontsize=8)
+
+    plt.savefig(os.path.join(FIG_DIR, f"{title.replace(' ', '_')}.png"), bbox_inches="tight")
+
+    plt.show()
+
+
+# ============================================================
+# Configuration plus "planétaire"
+# ============================================================
+
+G = 1.0
+
+dt = 0.001
+T = 10
+t = np.arange(0, T, dt)
+
+
+m = np.array([10.0, 0.1, 0.1])
+
+R0 = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.6]])  # corps 1 : étoile centrale  # corps 2 : planète proche  # corps 3 : planète plus éloignée
+
+V0 = np.array([[0.0, 0.0], [0.0, 3.2], [-2.5, 0.0]])  # étoile presque immobile  # vitesse tangentielle  # vitesse tangentielle
+
+
+Rs_verlet, Vs_verlet = verlet_integrate_nbody(R0, V0, m, t, dt, G=G)
+
+R0_modifie = R0.copy()
+R0_modifie[1, 0] += 0.01
+
+
+Rs_modifie, Vs_modifie = verlet_integrate_nbody(R0_modifie, V0, m, t, dt, G=G)
+
+affiche_comparaison_trajectoires(
+    Rs_verlet,
+    Rs_modifie,
+    title="Effet d'une petite modification de position"
+)
+
+affiche_trajectoires_planetes(
+    Rs_verlet,
+    title="Trajectoires des 3 planètes (Verlet)"
+)
+affiche_trajectoires_planetes(
+    Rs_modifie,
+    title="Trajectoires des 3 planètes (Verlet) après modification de position initiale"
+)
