@@ -403,11 +403,11 @@ def affiche_positions(t, r1, r2, methode, label1="Corps 1", label2="Corps 2"):
         None
     """
     plt.figure()
-    plt.plot(r1[:, 0], r1[:, 1], label=label1, color=couleur.get(methode, "tab:blue"))
-    plt.plot(r2[:, 0], r2[:, 1], label=label2, color=couleur.get(methode, "tab:blue"))
+    plt.plot(r1[:, 0], r1[:, 1], label=label1, color="blue")
+    plt.plot(r2[:, 0], r2[:, 1], label=label2, color="orange")
     plt.xlabel("x")
     plt.ylabel("y")
-    plt.title("Trajectoires des deux corps")
+    plt.title(f"Trajectoires des deux corps ({methode.upper()})")
     plt.axis("equal")
     plt.legend()
     plt.grid(True)
@@ -421,7 +421,6 @@ def plot_erreur(t, dt):
     param :
         t: temps (array-like)
         dt: pas de temps utilisé (float)
-        method_name: nom de la méthode numérique utilisée (str)
     return:
         None
     """
@@ -438,17 +437,18 @@ def plot_erreur(t, dt):
     err_ode = np.linalg.norm(r1_ode - r1_ana, axis=1)
 
     plt.figure()
-    plt.plot(t, err_eul, label="Erreur Corps 1 (Euler)", color=couleur.get("Euler", "tab:blue"))
-    plt.plot(t, err_rk4, label="Erreur Corps 2 (RK4)", color=couleur.get("RK4", "tab:orange"))
-    plt.plot(t, err_verlet, label="Erreur Corps 3 (Verlet)", color=couleur.get("Verlet", "tab:green"))
-    plt.plot(t, err_ode, label="Erreur Corps 4 (Odeint)", color=couleur.get("Odeint", "tab:red"))
-
+    plt.plot(t, err_eul, label="Erreur Euler", color=couleur.get("Euler", "tab:blue"))
+    plt.plot(t, err_rk4, label="Erreur RK4", color=couleur.get("RK4", "tab:orange"))
+    plt.plot(t, err_verlet, label="Erreur Verlet", color=couleur.get("Verlet", "tab:green"))
+    plt.plot(t, err_ode, label="Erreur Odeint", color=couleur.get("Odeint", "tab:red"))
+    
+    x = round(t[-1], 2)  
     plt.xlabel("Temps")
     plt.ylabel("Erreur (distance)")
-    plt.title(f"Erreur entre les solutions numérique et analytique pour dt = {dt} et T = {t[-1]}")
+    plt.title(f"Erreur entre les solutions numérique et analytique ")
     plt.legend()
     plt.grid(True)
-    plt.savefig(os.path.join(FIG_DIR, f"erreur_vs_analytique_dt={dt}_T={t[-1]}.png"), bbox_inches="tight")
+    plt.savefig(os.path.join(FIG_DIR, f"erreur_vs_analytique_dt={dt}_T={x}.png"), bbox_inches="tight")
     plt.show()
 
 
@@ -760,50 +760,47 @@ def runge_lenz_vecteur(r1, r2, v1, v2, m1, m2, G=1.0):
 
 def tracer_runge_lenz(t, A_eul, A_rk4, A_ver, A_ana, A_ode):
     """
-    Trace le vecteur de Runge-Lenz pour les différentes méthodes d'intégration.
-    param :
-        t: temps (array-like)
-        A_eul: vecteur de Runge-Lenz pour Euler (array-like)
-        A_rk4: vecteur de Runge-Lenz pour RK4 (array-like)
-        A_ver: vecteur de Runge-Lenz pour Verlet (array-like)
-        A_ana: vecteur de Runge-Lenz pour la solution analytique (array-like)
-        A_ode: vecteur de Runge-Lenz pour Odeint (array-like)
-    return:
-        None
+    Trace la norme du vecteur de Runge-Lenz.
+
+    Pour une orbite circulaire, le vecteur de Runge-Lenz théorique est nul.
+    Donc on trace ||A|| au lieu de diviser par ||A_ana||.
     """
-    plt.figure(figsize=(8, 6))
-    A_eul_norm = np.linalg.norm(A_eul - A_ana, axis=1) / (np.linalg.norm(A_ana, axis=1) + 1e-12)
-    A_rk4_norm = np.linalg.norm(A_rk4 - A_ana, axis=1) / (np.linalg.norm(A_ana, axis=1) + 1e-12)
-    A_ver_norm = np.linalg.norm(A_ver - A_ana, axis=1) / (np.linalg.norm(A_ana, axis=1) + 1e-12)
-    A_ode_norm = np.linalg.norm(A_ode - A_ana, axis=1) / (np.linalg.norm(A_ana, axis=1) + 1e-12)
+
+    eps_plot = 1e-16
+
+    A_eul_norm = np.linalg.norm(A_eul, axis=1)
+    A_rk4_norm = np.linalg.norm(A_rk4, axis=1)
+    A_ver_norm = np.linalg.norm(A_ver, axis=1)
+    A_ode_norm = np.linalg.norm(A_ode, axis=1)
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
-    ax1.plot(t, A_eul_norm, label="Euler", color=couleur.get("Euler", "tab:blue"))
-    ax1.plot(t, A_rk4_norm, label="RK4", color=couleur.get("RK4", "tab:orange"))
-    ax1.plot(t, A_ver_norm, label="Verlet", color=couleur.get("Verlet", "tab:green"))
-    ax1.plot(t, A_ode_norm, label="Odeint", color=couleur.get("Odeint", "tab:red"))
-    ax1.set_title("Dérive du vecteur de Runge-Lenz (toutes méthodes)")
+    # Graphe avec toutes les méthodes
+    ax1.semilogy(t, A_eul_norm + eps_plot, label="Euler", color=couleur.get("Euler", "tab:blue"))
+    ax1.semilogy(t, A_rk4_norm + eps_plot, label="RK4", color=couleur.get("RK4", "tab:orange"))
+    ax1.semilogy(t, A_ver_norm + eps_plot, label="Verlet", color=couleur.get("Verlet", "tab:green"))
+    ax1.semilogy(t, A_ode_norm + eps_plot, label="Odeint", color=couleur.get("Odeint", "tab:red"))
+
+    ax1.set_title("Norme du vecteur de Runge-Lenz")
     ax1.set_xlabel("Temps")
-    ax1.set_ylabel(r"||A - A_0||/||A_0||")
-    ax1.grid(True)
+    ax1.set_ylabel(r"$||A||$")
+    ax1.grid(True, which="both")
     ax1.legend()
 
-    ax2.plot(t, A_rk4_norm, label="RK4", color=couleur.get("RK4", "tab:orange"))
-    # ax2.plot(t, A_ver_norm, label="Verlet", color=couleur.get("Verlet", "tab:green"))
-    ax2.plot(t, A_ode_norm, label="Odeint", color=couleur.get("Odeint", "tab:red"))
-    ax2.set_title("Zoom : RK4 vs Verlet")
+    # Zoom sans Euler
+    ax2.semilogy(t, A_rk4_norm + eps_plot, label="RK4", color=couleur.get("RK4", "tab:orange"))
+    ax2.semilogy(t, A_ver_norm + eps_plot, label="Verlet", color=couleur.get("Verlet", "tab:green"))
+    ax2.semilogy(t, A_ode_norm + eps_plot, label="Odeint", color=couleur.get("Odeint", "tab:red"))
+
+    ax2.set_title("Zoom : RK4 vs Verlet vs Odeint")
     ax2.set_xlabel("Temps")
-    ax2.grid(True)
+    ax2.grid(True, which="both")
     ax2.legend()
 
-    for ax in (ax1, ax2):
-        ax.ticklabel_format(style="plain", axis="y", useOffset=False)
-
     Tfinal = t[-1] if hasattr(t, "__len__") and len(t) > 0 else 0
-    plt.savefig(os.path.join(FIG_DIR, f"conservation_runge_lenz_T={Tfinal}.png"), bbox_inches="tight")
+    plt.savefig(os.path.join(FIG_DIR, f"norme_runge_lenz_T={Tfinal}.png"), bbox_inches="tight")
     plt.show()
-
-
+    
 # ============================================================
 # Testes 2-corps
 # ============================================================
@@ -816,27 +813,27 @@ r_02 = (-1.0, 0.0)
 v_01, v_02 = vitesses_circulaires(r_01, r_02, m1, m2, G, sens=+1)
 
 dt = 0.1
-t = np.arange(0, 40000, dt)
+t = np.arange(0, 400, dt)
 
 # =============================================================
 # calcule des positions et vitesses avec les différentes méthodes
 # =============================================================
 
-r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
-v1_ana, v2_ana = vitesse_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
-r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
-r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2, t, G)
+# r1_ana, r2_ana, omega = position_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
+# v1_ana, v2_ana = vitesse_analytique(r_01, r_02, v_01, v_02, m1, m2, t, G)
+# r1_eul, r2_eul, v1_eul, v2_eul = euler_explicite(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+# r1_rk4, r2_rk4, v1_rk4, v2_rk4 = rk4_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+# r1_verlet, r2_verlet, v1_verlet, v2_verlet = verlet_integrate(r_01, r_02, v_01, v_02, m1, m2, t, dt, G)
+# r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2, t, G)
 
 # =============================================================
 # affichage des trajectoires
 # =============================================================
 
-# affiche_positions(t, r1_ana, r2_ana,"analitique", label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
+# affiche_positions(t, r1_ana, r2_ana,"analytique", label1=f"Corps 1 (Analytique)(m = {m1})", label2=f"Corps 2 (Analytique)(m = {m2})")
 # affiche_positions(t, r1_eul, r2_eul,"euler", label1=f'Corps 1 (Euler)(m = {m1})',label2=f"Corps 2 (Euler)(m = {m2})")
 # affiche_positions(t, r1_rk4, r2_rk4, "rk4", label1=f"Corps 1 (RK4)(m = {m1})", label2=f"Corps 2 (RK4)(m = {m2})")
-# affiche_positions(t, r1_verlet, r2_verlet,"verlet", label1="Corps 1 (Verlet)(m = {m1})",label2="Corps 2 (Verlet)(m = {m2})")
+# affiche_positions(t, r1_verlet, r2_verlet,"verlet", label1=f"Corps 1 (Verlet)(m = {m1})",label2=f"Corps 2 (Verlet)(m = {m2})")
 # affiche_positions(t, r1_ode, r2_ode,"odeint", label1=f'Corps 1 (ODEINT)(m = {m1})',label2=f"Corps 2 (ODEINT)(m = {m2})")
 
 
@@ -844,7 +841,7 @@ r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2
 # affichage de l'erreur
 # =============================================================
 
-# plot_erreur(t, dt)
+plot_erreur(t, dt)
 # tracer_erreur_vs_dt(dt_min=1e-5, dt_max=1, nb_points=11, T=50)
 
 
@@ -852,7 +849,7 @@ r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2
 # etude de l'energie mécanique
 # =============================================================
 
-# tracer_energie_double(40000,dt, m1, m2, G)
+# tracer_energie_double(400,dt, m1, m2, G)
 
 # dt_list = [0.2, 0.1, 0.05, 0.025, 0.0125]
 # drift_energie_vs_dt(dt_list, T=300, r_01=r_01, r_02=r_02, v_01=v_01, v_02=v_02, m1=m1, m2=m2, G=G)
@@ -867,7 +864,7 @@ r1_ode, r2_ode, v1_ode, v2_ode = odeint_integrate(r_01, r_02, v_01, v_02, m1, m2
 # L_ver = moment_cinetique(r1_verlet, r2_verlet, v1_verlet, v2_verlet, m1, m2)
 # L_ana = moment_cinetique(r1_ana, r2_ana, v1_ana, v2_ana, m1, m2)
 # L_ode = moment_cinetique(r1_ode, r2_ode, v1_ode, v2_ode, m1, m2)
-# tracer_moment_c_inetique_double(t, L_eul, L_rk4, L_ver, L_ana, L_ode)
+# tracer_moment_cinetique_double(t, L_eul, L_rk4, L_ver, L_ana, L_ode)
 
 # =============================================================
 # etude du vecteur de Runge-Lenz
@@ -1148,14 +1145,16 @@ def affiche_trajectoires_planetes(Rs, title="Trajectoires des 3 planètes"):
     plt.show()
 
 
-def affiche_comparaison_trajectoires(Rs_normal, Rs_modifie, title="Comparaison des trajectoires"):
+def affiche_comparaison_trajectoires(Rs_normal, Rs_modifie, methode,title="Comparaison des trajectoires"):
     """
-    Affiche sur le même graphique :
-    - les trajectoires normales
-    - les trajectoires après une petite modification de position initiale
-
-    Les ronds indiquent les positions initiales.
-    Les croix indiquent les positions finales.
+    Affiche la comparaison des trajectoires normales et modifiées.
+    param :
+        Rs_normal : positions des planètes au cours du temps pour la trajectoire normale
+        Rs_modifie : positions des planètes au cours du temps pour la trajectoire modifiée
+        methode : méthode d'intégration utilisée (string)
+        title : titre du graphique
+    return :
+        None
     """
 
     Rs_normal = np.asarray(Rs_normal, float)
@@ -1181,11 +1180,55 @@ def affiche_comparaison_trajectoires(Rs_normal, Rs_modifie, title="Comparaison d
         # Position initiale modifiée
         plt.scatter(Rs_modifie[0, i, 0], Rs_modifie[0, i, 1], facecolors="none", edgecolors=couleur_i, marker="o", s=130, linewidths=2, zorder=6)
 
-        # Position finale normale
-        plt.scatter(Rs_normal[-1, i, 0], Rs_normal[-1, i, 1], color=couleur_i, marker="X", s=100, edgecolor="black", zorder=7)
 
-        # Position finale modifiée
-        plt.scatter(Rs_modifie[-1, i, 0], Rs_modifie[-1, i, 1], color=couleur_i, marker="P", s=100, edgecolor="black", zorder=8)
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title(title + f" ({methode})")
+
+    plt.axis("equal")
+    plt.grid(True)
+
+    # Pour mieux voir la zone intéressante
+    plt.xlim(-2.2, 2.2)
+    plt.ylim(-2.2, 2.2)
+
+    plt.legend(fontsize=8)
+
+    plt.savefig(os.path.join(FIG_DIR, f"{title.replace(' ', '_')} ({methode}).png"), bbox_inches="tight")
+
+    plt.show()
+    
+    
+def affiche_comparaison_deux_methode(Rs_rk4, Rs_verlet,title="Comparaison des trajectoires RK4 vs Verlet"):
+    """
+    Compare les trajectoires obtenues avec deux méthodes d'intégration différentes (RK4 et Verlet) pour une configuration planétaire donnée, en affichant les résultats sur un même graphique.
+    param :
+        Rs_rk4 : positions des planètes au cours du temps obtenues avec la méthode RK4
+        Rs_verlet : positions des planètes au cours du temps obtenues avec la méthode Verlet
+        title : titre du graphique
+    return :
+        None (affiche les graphiques de comparaison)
+    """
+    
+
+    Rs_rk4 = np.asarray(Rs_rk4, float)
+    Rs_verlet = np.asarray(Rs_verlet, float)
+    
+    nb_corps = Rs_rk4.shape[1]
+    couleurs = ["tab:blue", "tab:orange", "tab:green"]
+    
+    plt.figure(figsize=(8, 8))
+
+    for i in range(nb_corps):
+        couleur_i = couleurs[i % len(couleurs)]
+
+
+        plt.plot(Rs_rk4[:, i, 0], Rs_rk4[:, i, 1], color=couleur_i, linewidth=2, label=f"Corps {i + 1} RK4")    
+        plt.plot(Rs_verlet[:, i, 0], Rs_verlet[:, i, 1], color=couleur_i, linestyle="--", linewidth=2, label=f"Corps {i + 1} Verlet")
+
+        plt.scatter(Rs_rk4[0, i, 0], Rs_rk4[0, i, 1], color=couleur_i, marker="o", s=90, edgecolor="black", zorder=5)
+        plt.scatter(Rs_verlet[0, i, 0], Rs_verlet[0, i, 1], facecolors="none", edgecolors=couleur_i, marker="o", s=130, linewidths=2, zorder=6)
+
 
     plt.xlabel("x")
     plt.ylabel("y")
@@ -1204,44 +1247,94 @@ def affiche_comparaison_trajectoires(Rs_normal, Rs_modifie, title="Comparaison d
 
     plt.show()
 
+def comparaison_deux_methode(Rs_rk4, Rs_verlet,title="Comparaison des trajectoires RK4 vs Verlet"):
+    """
+    affiche l'erreur relative entre les trajectoires obtenues avec deux méthodes d'intégration différentes (RK4 et Verlet) pour une configuration planétaire donnée, en affichant les résultats sur un même graphique.
+    param :
+        Rs_rk4 : positions des planètes au cours du temps obtenues avec la méthode RK4
+        Rs_verlet : positions des planètes au cours du temps obtenues avec la méthode Verlet
+        title : titre du graphique
+    return :
+        None (affiche les graphiques de comparaison)
+    """
+    Rs_rk4 = np.asarray(Rs_rk4, float)
+    Rs_verlet = np.asarray(Rs_verlet, float)
+
+    nb_corps = Rs_rk4.shape[1]
+    couleurs = ["tab:blue", "tab:orange", "tab:green"]
+
+    plt.figure(figsize=(8, 6))
+
+    for i in range(nb_corps):
+        couleur_i = couleurs[i % len(couleurs)]
+        dist = np.linalg.norm(Rs_rk4[:, i, :] - Rs_verlet[:, i, :], axis=1)
+        plt.plot(dist, label=f"Corps {i + 1}", color=couleur_i)
+
+    plt.xlabel("Temps (index)")
+    plt.ylabel("Distance entre RK4 et Verlet")
+    plt.title(title)
+    plt.grid(True)
+    plt.legend()
+    plt.savefig(os.path.join(FIG_DIR, f"{title.replace(' ', '_')}_erreur.png"), bbox_inches="tight")
+    plt.show()
+
+
 
 # ============================================================
-# Configuration plus "planétaire"
+# test
 # ============================================================
 
-G = 1.0
+# G = 1.0
 
-dt = 0.001
-T = 10
-t = np.arange(0, T, dt)
+# dt = 0.01
 
-
-m = np.array([10.0, 0.1, 0.1])
-
-R0 = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.6]])  # corps 1 : étoile centrale  # corps 2 : planète proche  # corps 3 : planète plus éloignée
-
-V0 = np.array([[0.0, 0.0], [0.0, 3.2], [-2.5, 0.0]])  # étoile presque immobile  # vitesse tangentielle  # vitesse tangentielle
+# t = np.arange(0, 10000, dt)
 
 
-Rs_verlet, Vs_verlet = verlet_integrate_nbody(R0, V0, m, t, dt, G=G)
+# m = np.array([10.0, 0.1, 0.1])
 
-R0_modifie = R0.copy()
-R0_modifie[1, 0] += 0.01
+# R0 = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.6]])  # corps 1 : étoile centrale  # corps 2 : planète proche  # corps 3 : planète plus éloignée
+
+# V0 = np.array([[0.0, 0.0], [0.0, 3.2], [-2.5, 0.0]])  # étoile presque immobile  # vitesse tangentielle  # vitesse tangentielle
 
 
-Rs_modifie, Vs_modifie = verlet_integrate_nbody(R0_modifie, V0, m, t, dt, G=G)
+# Rs_verlet, Vs_verlet = verlet_integrate_nbody(R0, V0, m, t, dt, G=G)
 
-affiche_comparaison_trajectoires(
-    Rs_verlet,
-    Rs_modifie,
-    title="Effet d'une petite modification de position"
-)
+# R0_modifie_verlet = R0.copy()
+# R0_modifie_verlet[1, 0] += 0.01
 
-affiche_trajectoires_planetes(
-    Rs_verlet,
-    title="Trajectoires des 3 planètes (Verlet)"
-)
-affiche_trajectoires_planetes(
-    Rs_modifie,
-    title="Trajectoires des 3 planètes (Verlet) après modification de position initiale"
-)
+
+# Rs_modifie_verlet, Vs_modifie_verlet = verlet_integrate_nbody(R0_modifie_verlet, V0, m, t, dt, G=G)
+
+# affiche_comparaison_trajectoires(
+#     Rs_verlet,
+#     Rs_modifie_verlet,
+#     "verlet",
+#     title="Effet d'une petite modification de position"
+# )
+
+# Rs_Rk4, Vs_Rk4 = rk4_integrate_nbody(R0, V0, m, t, dt, G=G)
+# R0_modifie_Rk4 = R0.copy()
+# R0_modifie_Rk4[1, 0] += 0.01
+# Rs_modifie_Rk4, Vs_modifie_Rk4 = rk4_integrate_nbody(R0_modifie_Rk4, V0, m, t, dt, G=G) 
+
+# affiche_comparaison_trajectoires(
+#     Rs_Rk4,
+#     Rs_modifie_Rk4,
+#     "RK4",
+#     title="Effet d'une petite modification de position"
+# )
+
+
+
+# comparaison_deux_methode(Rs_Rk4, Rs_verlet, title="Comparaison des trajectoires RK4 vs Verlet") 
+
+
+# affiche_trajectoires_planetes(
+#     Rs_verlet,
+#     title="Trajectoires des 3 planètes (Verlet)"
+# )
+# affiche_trajectoires_planetes(
+#     Rs_modifie,
+#     title="Trajectoires des 3 planètes (Verlet) après modification de position initiale"
+# )
